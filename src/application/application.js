@@ -1,16 +1,16 @@
-internal('platform', ['app', 'hb.directive','ContactService'],
+internal('application', ['app', 'hb.directive','ContactService'],
   function(app, directive, ContactService) {
 
     // :: PUBLIC API ::
     exports.boot = function() {
-      document.body.insertAdjacentHTML("beforeEnd", '<platform class="obogo"></platform>');
+      document.body.insertAdjacentHTML("beforeEnd", '<application class="hb"></application>');
       app.bootstrap(document.body);
     };
 
-    directive('platform', function() {
+    directive('application', function() {
       return {
         scope: true,
-        tplUrl: 'platform',
+        tplUrl: 'application',
         link: ['scope', 'el', 'attr', function(scope, el, attr) {
           scope.model = {
             title: attr.title,

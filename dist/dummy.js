@@ -571,16 +571,17 @@
             return new Scope(interpolate);
         };
     });
-    //! src/widgets/dummy/app.js
+    //! src/widgets/dummy/bootstrap.js
     internal("app", [ "module", "dispatcher", "ready", "loader", "findScriptUrls", "forEach" ], function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
+        var name = "dummy";
         var app = dispatcher(module("app"));
         app.preLink = function(el, directive) {
             if (directive.alias.name.indexOf("hb-") === -1 && directive.alias.name.indexOf("-") !== -1) {
                 el.classList.add(directive.alias.name);
             }
         };
-        var assets = [ "dummy.css" ];
-        var urls = findScriptUrls(/dummy(\.min)?\.js$/i);
+        var assets = [ name + ".css" ];
+        var urls = findScriptUrls(new RegExp(name + "(.min)?.js$"), "i");
         if (urls.length) {
             var scriptUrl = urls[0].substring(0, urls[0].lastIndexOf("/"));
             var len = assets.length;
@@ -589,7 +590,7 @@
             }
             loader.load(assets, function() {
                 ready(function() {
-                    var el = document.querySelector("dummy");
+                    var el = document.querySelector(name);
                     if (el) {
                         el.setAttribute("ng-non-bindable", "");
                         app.bootstrap(el);
@@ -2324,7 +2325,7 @@
         directive("dummy", function() {
             return {
                 scope: true,
-                tplUrl: "1c9febe2_tpl0",
+                tplUrl: "f21e3bee_tpl0",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     query(el).addClass(alias.name);
                     if (!scope.model) {
@@ -2374,7 +2375,7 @@
         directive("dummyLabel", function() {
             return {
                 scope: true,
-                tplUrl: "1c9febe2_tpl1",
+                tplUrl: "f21e3bee_tpl1",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -2401,8 +2402,8 @@
     });
     //! .tmp_templates/templates_0.js
     internal("templates_0", [ "app" ], function(app) {
-        app.template("1c9febe2_tpl0", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
-        app.template("1c9febe2_tpl1", "<div>You said: {{title}} {{text}}</div>");
+        app.template("f21e3bee_tpl0", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
+        app.template("f21e3bee_tpl1", "<div>You said: {{title}} {{text}}</div>");
     });
     for (var name in cache) {
         resolve(name, cache[name]);

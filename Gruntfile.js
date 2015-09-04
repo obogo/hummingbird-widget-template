@@ -6,7 +6,7 @@ module.exports = function(grunt) {
   var config = {};
   config.compile = {
     "dummy": {
-      wrap: 'obogo',
+      wrap: 'obogo', // this is your global namespace
       name: "app",
       filename: 'dummy',
       build: 'dist',
@@ -34,13 +34,13 @@ module.exports = function(grunt) {
       }],
     },
 
-    "all": {
-      wrap: 'obogo',
+    "widgets": {
+      wrap: 'obogo', // this is your global namespace
       name: "app",
       filename: 'widgets',
       build: 'dist',
       scripts: {
-        src: ['src/app.js', 'src/widgets/**/*.js', 'src/shared/**/*.js', '!src/widgets/*/app.js'], // search through all JS file in src src directory
+        src: ['src/widgets/**/*.js', 'src/shared/**/*.js', '!src/widgets/*/bootstrap.js'], // search through all JS file in src src directory
         import: ['widgets.*', 'shared.*', 'hbd.cloak'], // what files should we import and compile
         export: [''] // hide all from view
       },
@@ -66,39 +66,39 @@ module.exports = function(grunt) {
     },
 
 
-    "platform": {
-      wrap: 'platform',
+    "application": {
+      wrap: 'application', // this is your global namespace
       name: "app",
-      filename: 'platform.dist',
+      filename: 'application.dist',
       build: 'dist',
       scripts: {
-        src: ['src/platform/**/*.js', 'src/shared/**/*.js', '!src/platform/widgets/*/app.js'], // search through all JS file in src src directory
-        import: ['platform.*', 'hbd.cloak'], // what files should we import and compile
+        src: ['src/application/**/*.js', 'src/shared/**/*.js', '!src/application/widgets/*/bootstrap.js'], // search through all JS file in src src directory
+        import: ['application.*', 'hbd.cloak'], // what files should we import and compile
         export: [''] // hide all from global namespace
       },
       styles: {
         options: {
-          paths: ["platform/**/*.less"],
+          paths: ["application/**/*.less"],
           strictImports: true,
           syncImport: true
         },
         files: {
-          'dist/platform.css': [
-            "src/platform/**/*.less"
+          'dist/application.css': [
+            "src/application/**/*.less"
           ]
         }
       },
       templates: [{
-        cwd: 'src/platform',
+        cwd: 'src/application',
         src: '**/**.html',
         options: {
           interval: 500
         }
       }],
       loader: {
-        url: "/dist/platform.dist.js",
+        url: "/dist/application.dist.js",
         api: "boot",
-        filename: "platform"
+        filename: "application"
       },
     }
   };

@@ -1,8 +1,11 @@
+/**
+ * This creates and bootstraps the application
+ **/
 /* global internal */
 define('app', ['module', 'dispatcher', 'ready', 'loader', 'findScriptUrls', 'forEach'],
   function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
 
-    var name = 'platform';
+    var name = 'application';
 
     var app = dispatcher(module('app'));
 

@@ -1,5 +1,5 @@
 (function(exports, global) {
-    global["platform"] = exports;
+    global["application"] = exports;
     var $$ = exports.$$ || function(name) {
         if (!$$[name]) {
             $$[name] = {};
@@ -70,21 +70,64 @@
         });
         delete pending[name];
     };
-    //! node_modules/hbjs/src/utils/validators/isArguments.js
-    internal("isArguments", [ "toString" ], function(toString) {
-        var isArguments = function(value) {
-            var str = String(value);
-            var isArguments = str === "[object Arguments]";
-            if (!isArguments) {
-                isArguments = str !== "[object Array]" && value !== null && typeof value === "object" && typeof value.length === "number" && value.length >= 0 && (!value.callee || toString.call(value.callee) === "[object Function]");
-            }
-            return isArguments;
+    //! node_modules/hbjs/src/utils/validators/isFunction.js
+    internal("isFunction", function() {
+        var isFunction = function(val) {
+            return typeof val === "function";
         };
-        return isArguments;
+        return isFunction;
     });
-    //! src/platform/app.js
+    //! src/application/application.js
+    internal("application", [ "app", "hb.directive", "ContactService" ], function(app, directive, ContactService) {
+        exports.boot = function() {
+            document.body.insertAdjacentHTML("beforeEnd", '<application class="hb"></application>');
+            app.bootstrap(document.body);
+        };
+        directive("application", function() {
+            return {
+                scope: true,
+                tplUrl: "e0d0e5ad_tpl0",
+                link: [ "scope", "el", "attr", function(scope, el, attr) {
+                    scope.model = {
+                        title: attr.title,
+                        text: ContactService.data.title,
+                        list: [ {
+                            name: "John Smith"
+                        }, {
+                            name: "Jane Doe"
+                        } ]
+                    };
+                    scope.addWidget = function(widgetScope) {
+                        console.log("widget added", widgetScope);
+                    };
+                    delete exports.$$;
+                } ]
+            };
+        });
+    });
+    //! node_modules/hbjs/src/hb/utils/directive.js
+    internal("hb.directive", [ "hb.val" ], function(val) {
+        return val;
+    });
+    //! node_modules/hbjs/src/hb/utils/val.js
+    internal("hb.val", function() {
+        var cache = {};
+        var val = function(name, fn) {
+            if (typeof fn === "undefined") {
+                return cache[name];
+            }
+            cache[name] = fn;
+        };
+        val.init = function(app) {
+            for (var name in cache) {
+                app.val(name, cache[name]);
+            }
+        };
+        return val;
+    });
+    //! src/application/bootstrap.js
     internal("app", [ "module", "dispatcher", "ready", "loader", "findScriptUrls", "forEach" ], function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
-        var name = "platform";
+        var name = "application";
         var app = dispatcher(module("app"));
         app.preLink = function(el, directive) {
             if (directive.alias.name.indexOf("hb-") === -1 && directive.alias.name.indexOf("-") !== -1) {
@@ -107,6 +150,152 @@
             });
         }
         return app;
+    });
+    //! node_modules/hbjs/src/hb/module.js
+    /*!
+ import hbd.app
+ import hbd.model
+ import hbd.events
+ import hb.directive
+ */
+    internal("module", [ "hb", "hb.compiler", "hb.scope", "hb.val", "injector", "interpolator", "removeHTMLComments", "each", "ready", "hb.debug", "hb.eventStash" ], function(hb, compiler, scope, val, injector, interpolator, removeHTMLComments, each, ready, debug, events) {
+        events.RESIZE = "resize";
+        var modules = {};
+        function Module(name) {
+            var self = this;
+            self.name = name;
+            var rootEl;
+            var bootstraps = [];
+            var _injector = this.injector = injector();
+            var _interpolator = this.interpolator = interpolator(_injector);
+            var _compiler = compiler(self);
+            var compile = _compiler.compile;
+            var interpolate = _interpolator.invoke;
+            var injectorVal = _injector.val.bind(_injector);
+            var rootScope = scope(interpolate);
+            rootScope.$ignoreInterpolateErrors = true;
+            window.addEventListener("resize", function() {
+                rootScope && rootScope.$broadcast(events.RESIZE);
+            });
+            injectorVal("$rootScope", rootScope);
+            _injector.preProcessor = function(key, value) {
+                if (value && value.isClass) {
+                    return _injector.instantiate(value);
+                }
+            };
+            function findScope(el) {
+                if (!el) {
+                    return null;
+                }
+                if (el.scope) {
+                    return el.scope;
+                }
+                return findScope(el.parentNode);
+            }
+            function bootstrap(el) {
+                if (el) {
+                    val.init(this);
+                    self.element(el);
+                    while (bootstraps.length) {
+                        _injector.invoke(bootstraps.shift(), self);
+                    }
+                    rootScope.$broadcast(events.HB_READY, self);
+                    rootScope.$apply();
+                }
+            }
+            function addChild(parentEl, htmlStr, overrideScope, data, prepend) {
+                if (!htmlStr) {
+                    return;
+                }
+                if (parentEl !== rootEl && rootEl.contains && !rootEl.contains(parentEl)) {
+                    throw new Error(debug.errors.E12, rootEl);
+                }
+                var scope = overrideScope || findScope(parentEl), child;
+                if (prepend) {
+                    parentEl.insertAdjacentHTML("afterbegin", removeHTMLComments(htmlStr));
+                    child = parentEl.children[0];
+                } else {
+                    parentEl.insertAdjacentHTML("beforeend", removeHTMLComments(htmlStr));
+                    child = parentEl.children[parentEl.children.length - 1];
+                }
+                return compileEl(child, overrideScope || scope, !!overrideScope, data);
+            }
+            function compileEl(el, scope, sameScope, data) {
+                var s = sameScope && scope || scope.$new(), i;
+                if (data) {
+                    for (i in data) {
+                        if (data.hasOwnProperty(i)) {
+                            s[i] = data[i];
+                        }
+                    }
+                }
+                _compiler.link(el, s);
+                compile(el, scope);
+                return el;
+            }
+            function removeChild(childEl) {
+                var list;
+                if (childEl.scope) {
+                    childEl.scope.$destroy();
+                    childEl.scope = null;
+                } else {
+                    list = childEl.querySelectorAll(name + "-id");
+                    each(list, removeChild);
+                }
+                childEl.remove();
+            }
+            function element(el) {
+                if (typeof el !== "undefined") {
+                    rootEl = el;
+                    _compiler.link(rootEl, rootScope);
+                    compile(rootEl, rootScope);
+                }
+                return rootEl;
+            }
+            function service(name, ClassRef) {
+                if (ClassRef === undefined) {
+                    return injectorVal(name);
+                }
+                ClassRef.isClass = true;
+                return injectorVal(name, ClassRef);
+            }
+            self.bindingMarkup = [ "{{", "}}" ];
+            self.elements = {};
+            self.bootstrap = bootstrap;
+            self.findScope = findScope;
+            self.addChild = addChild;
+            self.removeChild = removeChild;
+            self.compile = compileEl;
+            self.interpolate = interpolate;
+            self.invoke = _injector.invoke.bind(_injector);
+            self.element = element;
+            self.val = injectorVal;
+            self.factory = injectorVal;
+            self.service = service;
+            self.template = injectorVal;
+            self.parseBinds = function(scope, str) {
+                return _compiler.parseBinds(str, scope);
+            };
+        }
+        return function(name, forceNew) {
+            if (!name) {
+                throw debug.errors.E8;
+            }
+            var app = modules[name] = !forceNew && modules[name] || new Module(name);
+            if (!app.val("$app")) {
+                app.val("$app", app);
+                app.val("$window", window);
+                setTimeout(function() {
+                    ready(function() {
+                        var el = document.querySelector("[" + name + "-app]");
+                        if (el) {
+                            app.bootstrap(el);
+                        }
+                    });
+                });
+            }
+            return app;
+        };
     });
     //! node_modules/hbjs/src/hb/directives/model.js
     internal("hbd.model", [ "hb.directive", "resolve", "query", "hb.debug", "throttle" ], function(directive, resolve, query, debug, throttle) {
@@ -496,26 +685,6 @@
             });
             return scope;
         };
-    });
-    //! node_modules/hbjs/src/hb/utils/directive.js
-    internal("hb.directive", [ "hb.val" ], function(val) {
-        return val;
-    });
-    //! node_modules/hbjs/src/hb/utils/val.js
-    internal("hb.val", function() {
-        var cache = {};
-        var val = function(name, fn) {
-            if (typeof fn === "undefined") {
-                return cache[name];
-            }
-            cache[name] = fn;
-        };
-        val.init = function(app) {
-            for (var name in cache) {
-                app.val(name, cache[name]);
-            }
-        };
-        return val;
     });
     //! node_modules/hbjs/src/utils/data/resolve.js
     internal("resolve", [ "isUndefined" ], function(isUndefined) {
@@ -1614,12 +1783,58 @@
             return injector;
         };
     });
-    //! node_modules/hbjs/src/utils/validators/isFunction.js
-    internal("isFunction", function() {
-        var isFunction = function(val) {
-            return typeof val === "function";
-        };
-        return isFunction;
+    //! node_modules/hbjs/src/hb/directives/attr/class.js
+    internal("hb.attr.class", [ "hb.directive" ], function(directive) {
+        directive("class", function() {
+            return {
+                link: [ "scope", "el", "$app", function(scope, el, $app) {
+                    var len = el.classList.length, bindClasses = [], watchId;
+                    for (var i = 0; i < len; i += 1) {
+                        if (el.classList[i].indexOf($app.bindingMarkup[0]) !== -1) {
+                            bindClasses.push({
+                                bindOnce: scope.$isBindOnce(el.classList[i]),
+                                bind: el.classList[i],
+                                last: ""
+                            });
+                            el.classList.remove(el.classList[i]);
+                            i -= 1;
+                            len -= 1;
+                        }
+                    }
+                    function classAttr() {
+                        this.expr = "class";
+                        var i, len = bindClasses.length, result, item;
+                        for (i = 0; i < len; i += 1) {
+                            item = bindClasses[i];
+                            result = $app.parseBinds(scope, item.bind);
+                            if (result !== item.last && item.last) {
+                                el.classList.remove(item.last);
+                            }
+                            if (result) {
+                                el.classList.add(result);
+                            }
+                            if (item.bindOnce) {
+                                bindClasses.splice(i, 1);
+                                i -= 1;
+                                if (!bindClasses.length) {
+                                    scope.$unwatch(watchId);
+                                }
+                            }
+                            item.last = result;
+                        }
+                    }
+                    if (bindClasses.length) {
+                        watchId = scope.$watch(classAttr);
+                    }
+                    scope.$on("$destroy", function() {
+                        bindClasses.length = 0;
+                        scope = null;
+                        el = null;
+                        $app = null;
+                    });
+                } ]
+            };
+        });
     });
     //! node_modules/hbjs/src/utils/formatters/toArray.js
     internal("toArray", [ "isArguments", "isArray", "isUndefined" ], function(isArguments, isArray, isUndefined) {
@@ -1639,151 +1854,17 @@
         };
         return toArray;
     });
-    //! node_modules/hbjs/src/hb/module.js
-    /*!
- import hbd.app
- import hbd.model
- import hbd.events
- import hb.directive
- */
-    internal("module", [ "hb", "hb.compiler", "hb.scope", "hb.val", "injector", "interpolator", "removeHTMLComments", "each", "ready", "hb.debug", "hb.eventStash" ], function(hb, compiler, scope, val, injector, interpolator, removeHTMLComments, each, ready, debug, events) {
-        events.RESIZE = "resize";
-        var modules = {};
-        function Module(name) {
-            var self = this;
-            self.name = name;
-            var rootEl;
-            var bootstraps = [];
-            var _injector = this.injector = injector();
-            var _interpolator = this.interpolator = interpolator(_injector);
-            var _compiler = compiler(self);
-            var compile = _compiler.compile;
-            var interpolate = _interpolator.invoke;
-            var injectorVal = _injector.val.bind(_injector);
-            var rootScope = scope(interpolate);
-            rootScope.$ignoreInterpolateErrors = true;
-            window.addEventListener("resize", function() {
-                rootScope && rootScope.$broadcast(events.RESIZE);
-            });
-            injectorVal("$rootScope", rootScope);
-            _injector.preProcessor = function(key, value) {
-                if (value && value.isClass) {
-                    return _injector.instantiate(value);
-                }
-            };
-            function findScope(el) {
-                if (!el) {
-                    return null;
-                }
-                if (el.scope) {
-                    return el.scope;
-                }
-                return findScope(el.parentNode);
+    //! node_modules/hbjs/src/utils/validators/isArguments.js
+    internal("isArguments", [ "toString" ], function(toString) {
+        var isArguments = function(value) {
+            var str = String(value);
+            var isArguments = str === "[object Arguments]";
+            if (!isArguments) {
+                isArguments = str !== "[object Array]" && value !== null && typeof value === "object" && typeof value.length === "number" && value.length >= 0 && (!value.callee || toString.call(value.callee) === "[object Function]");
             }
-            function bootstrap(el) {
-                if (el) {
-                    val.init(this);
-                    self.element(el);
-                    while (bootstraps.length) {
-                        _injector.invoke(bootstraps.shift(), self);
-                    }
-                    rootScope.$broadcast(events.HB_READY, self);
-                    rootScope.$apply();
-                }
-            }
-            function addChild(parentEl, htmlStr, overrideScope, data, prepend) {
-                if (!htmlStr) {
-                    return;
-                }
-                if (parentEl !== rootEl && rootEl.contains && !rootEl.contains(parentEl)) {
-                    throw new Error(debug.errors.E12, rootEl);
-                }
-                var scope = overrideScope || findScope(parentEl), child;
-                if (prepend) {
-                    parentEl.insertAdjacentHTML("afterbegin", removeHTMLComments(htmlStr));
-                    child = parentEl.children[0];
-                } else {
-                    parentEl.insertAdjacentHTML("beforeend", removeHTMLComments(htmlStr));
-                    child = parentEl.children[parentEl.children.length - 1];
-                }
-                return compileEl(child, overrideScope || scope, !!overrideScope, data);
-            }
-            function compileEl(el, scope, sameScope, data) {
-                var s = sameScope && scope || scope.$new(), i;
-                if (data) {
-                    for (i in data) {
-                        if (data.hasOwnProperty(i)) {
-                            s[i] = data[i];
-                        }
-                    }
-                }
-                _compiler.link(el, s);
-                compile(el, scope);
-                return el;
-            }
-            function removeChild(childEl) {
-                var list;
-                if (childEl.scope) {
-                    childEl.scope.$destroy();
-                    childEl.scope = null;
-                } else {
-                    list = childEl.querySelectorAll(name + "-id");
-                    each(list, removeChild);
-                }
-                childEl.remove();
-            }
-            function element(el) {
-                if (typeof el !== "undefined") {
-                    rootEl = el;
-                    _compiler.link(rootEl, rootScope);
-                    compile(rootEl, rootScope);
-                }
-                return rootEl;
-            }
-            function service(name, ClassRef) {
-                if (ClassRef === undefined) {
-                    return injectorVal(name);
-                }
-                ClassRef.isClass = true;
-                return injectorVal(name, ClassRef);
-            }
-            self.bindingMarkup = [ "{{", "}}" ];
-            self.elements = {};
-            self.bootstrap = bootstrap;
-            self.findScope = findScope;
-            self.addChild = addChild;
-            self.removeChild = removeChild;
-            self.compile = compileEl;
-            self.interpolate = interpolate;
-            self.invoke = _injector.invoke.bind(_injector);
-            self.element = element;
-            self.val = injectorVal;
-            self.factory = injectorVal;
-            self.service = service;
-            self.template = injectorVal;
-            self.parseBinds = function(scope, str) {
-                return _compiler.parseBinds(str, scope);
-            };
-        }
-        return function(name, forceNew) {
-            if (!name) {
-                throw debug.errors.E8;
-            }
-            var app = modules[name] = !forceNew && modules[name] || new Module(name);
-            if (!app.val("$app")) {
-                app.val("$app", app);
-                app.val("$window", window);
-                setTimeout(function() {
-                    ready(function() {
-                        var el = document.querySelector("[" + name + "-app]");
-                        if (el) {
-                            app.bootstrap(el);
-                        }
-                    });
-                });
-            }
-            return app;
+            return isArguments;
         };
+        return isArguments;
     });
     //! node_modules/hbjs/src/utils/validators/isArray.js
     internal("isArray", function() {
@@ -2317,87 +2398,6 @@
             return matches;
         };
     });
-    //! src/platform/platform.js
-    internal("platform", [ "app", "hb.directive", "ContactService" ], function(app, directive, ContactService) {
-        exports.boot = function() {
-            document.body.insertAdjacentHTML("beforeEnd", '<platform class="obogo"></platform>');
-            app.bootstrap(document.body);
-        };
-        directive("platform", function() {
-            return {
-                scope: true,
-                tplUrl: "bab5c4d8_tpl0",
-                link: [ "scope", "el", "attr", function(scope, el, attr) {
-                    scope.model = {
-                        title: attr.title,
-                        text: ContactService.data.title,
-                        list: [ {
-                            name: "John Smith"
-                        }, {
-                            name: "Jane Doe"
-                        } ]
-                    };
-                    scope.addWidget = function(widgetScope) {
-                        console.log("widget added", widgetScope);
-                    };
-                    delete exports.$$;
-                } ]
-            };
-        });
-    });
-    //! node_modules/hbjs/src/hb/directives/attr/class.js
-    internal("hb.attr.class", [ "hb.directive" ], function(directive) {
-        directive("class", function() {
-            return {
-                link: [ "scope", "el", "$app", function(scope, el, $app) {
-                    var len = el.classList.length, bindClasses = [], watchId;
-                    for (var i = 0; i < len; i += 1) {
-                        if (el.classList[i].indexOf($app.bindingMarkup[0]) !== -1) {
-                            bindClasses.push({
-                                bindOnce: scope.$isBindOnce(el.classList[i]),
-                                bind: el.classList[i],
-                                last: ""
-                            });
-                            el.classList.remove(el.classList[i]);
-                            i -= 1;
-                            len -= 1;
-                        }
-                    }
-                    function classAttr() {
-                        this.expr = "class";
-                        var i, len = bindClasses.length, result, item;
-                        for (i = 0; i < len; i += 1) {
-                            item = bindClasses[i];
-                            result = $app.parseBinds(scope, item.bind);
-                            if (result !== item.last && item.last) {
-                                el.classList.remove(item.last);
-                            }
-                            if (result) {
-                                el.classList.add(result);
-                            }
-                            if (item.bindOnce) {
-                                bindClasses.splice(i, 1);
-                                i -= 1;
-                                if (!bindClasses.length) {
-                                    scope.$unwatch(watchId);
-                                }
-                            }
-                            item.last = result;
-                        }
-                    }
-                    if (bindClasses.length) {
-                        watchId = scope.$watch(classAttr);
-                    }
-                    scope.$on("$destroy", function() {
-                        bindClasses.length = 0;
-                        scope = null;
-                        el = null;
-                        $app = null;
-                    });
-                } ]
-            };
-        });
-    });
     //! src/shared/services/ContactService.js
     internal("ContactService", [ "http" ], function(http) {
         var scope = this;
@@ -2618,12 +2618,12 @@
         };
         return extend;
     });
-    //! src/platform/widgets/card/card.js
+    //! src/application/widgets/card/card.js
     internal("card", [ "hb.directive", "query", "ContactService", "resolve" ], function(directive, query, ContactService, resolve) {
         directive("card", function() {
             return {
                 scope: true,
-                tplUrl: "bab5c4d8_tpl1",
+                tplUrl: "e0d0e5ad_tpl1",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     console.log("whois", alias, resolve(scope).get(alias.value));
                     scope.contact = resolve(scope).get(alias.value);
@@ -2691,12 +2691,12 @@
         };
         return isDefined;
     });
-    //! src/platform/widgets/card/label/label.js
+    //! src/application/widgets/card/label/label.js
     internal("cardLabel", [ "hb.directive" ], function(directive) {
         directive("cardLabel", function() {
             return {
                 scope: true,
-                tplUrl: "bab5c4d8_tpl2",
+                tplUrl: "e0d0e5ad_tpl2",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -2962,13 +2962,13 @@
     });
     //! .tmp_templates/templates_0.js
     internal("templates_0", [ "app" ], function(app) {
-        app.template("bab5c4d8_tpl0", '<div hb-repeat="item in model.list"><div card=item></div></div>');
-        app.template("bab5c4d8_tpl1", '<div><div card-label=contact.name></div><div class=card-content><p>Insert content here...</p><div class="btn btn-primary" hb-click=update()>Click me</div></div></div>');
-        app.template("bab5c4d8_tpl2", "<div class=card-label>{{text}}</div>");
+        app.template("e0d0e5ad_tpl0", '<div hb-repeat="item in model.list"><div card=item></div></div>');
+        app.template("e0d0e5ad_tpl1", '<div><div card-label=contact.name></div><div class=card-content><p>Insert content here...</p><div class="btn btn-primary" hb-click=update()>Click me</div></div></div>');
+        app.template("e0d0e5ad_tpl2", "<div class=card-label>{{text}}</div>");
     });
     for (var name in cache) {
         resolve(name, cache[name]);
     }
-})(this["platform"] || {}, function() {
+})(this["application"] || {}, function() {
     return this;
 }());

@@ -1,6 +1,11 @@
+/**
+ * This creates and bootstraps the application
+ **/
 /* global internal */
 define('app', ['module', 'dispatcher', 'ready', 'loader', 'findScriptUrls', 'forEach'],
   function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
+
+    var name = 'dummy';
 
     var app = dispatcher(module('app'));
 
@@ -10,8 +15,8 @@ define('app', ['module', 'dispatcher', 'ready', 'loader', 'findScriptUrls', 'for
       }
     };
 
-    var assets = ['dummy.css'];
-    var urls = findScriptUrls(/dummy(\.min)?\.js$/i);
+    var assets = [name + '.css'];
+    var urls = findScriptUrls(new RegExp(name + '(\.min)?\.js$'), 'i');
     if (urls.length) {
       var scriptUrl = urls[0].substring(0, urls[0].lastIndexOf('/'));
       var len = assets.length;
@@ -21,7 +26,7 @@ define('app', ['module', 'dispatcher', 'ready', 'loader', 'findScriptUrls', 'for
 
       loader.load(assets, function() {
         ready(function() {
-          var el = document.querySelector('dummy');
+          var el = document.querySelector(name);
           if (el) {
             el.setAttribute('ng-non-bindable', '');
             app.bootstrap(el);

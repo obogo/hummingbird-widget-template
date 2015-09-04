@@ -1,17 +1,23 @@
+/**
+ * This creates and bootstraps the application
+ **/
 /* global internal */
 define('app', ['module', 'dispatcher', 'ready', 'loader', 'findScriptUrls', 'forEach'],
   function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
+
+    var name = 'widgets';
 
     var app = dispatcher(module('app'));
 
     app.preLink = function(el, directive) {
       if (directive.alias.name.indexOf('hb-') === -1 && directive.alias.name.indexOf('-') !== -1) {
         el.classList.add(directive.alias.name);
+        el.setAttribute('ng-non-bindable', '');
       }
     };
 
-    var assets = ['dummer.css'];
-    var urls = findScriptUrls(/dummer(\.min)?\.js$/i);
+    var assets = [name + '.css'];
+    var urls = findScriptUrls(new RegExp(name + '(\.min)?\.js$'), 'i');
     if (urls.length) {
       var scriptUrl = urls[0].substring(0, urls[0].lastIndexOf('/'));
       var len = assets.length;
@@ -21,11 +27,7 @@ define('app', ['module', 'dispatcher', 'ready', 'loader', 'findScriptUrls', 'for
 
       loader.load(assets, function() {
         ready(function() {
-          var el = document.querySelector('dummer');
-          if (el) {
-            el.setAttribute('ng-non-bindable', '');
-            app.bootstrap(el);
-          }
+            app.bootstrap(document.body);
         });
       });
     }

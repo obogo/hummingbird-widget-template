@@ -70,180 +70,102 @@
         });
         delete pending[name];
     };
-    //! node_modules/hbjs/src/utils/array/each.js
-    internal("each", function() {
-        function applyMethod(scope, method, item, index, list, extraArgs, all) {
-            var args = all ? [ item, index, list ] : [ item ];
-            return method.apply(scope, args.concat(extraArgs));
-        }
-        var each = function(list, method) {
-            var i = 0, len, result, extraArgs;
-            if (arguments.length > 2) {
-                extraArgs = Array.prototype.slice.apply(arguments);
-                extraArgs.splice(0, 2);
+    //! node_modules/hbjs/src/utils/validators/isFunction.js
+    internal("isFunction", function() {
+        var isFunction = function(val) {
+            return typeof val === "function";
+        };
+        return isFunction;
+    });
+    //! src/widgets/bootstrap.js
+    internal("app", [ "module", "dispatcher", "ready", "loader", "findScriptUrls", "forEach" ], function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
+        var name = "widgets";
+        var app = dispatcher(module("app"));
+        app.preLink = function(el, directive) {
+            if (directive.alias.name.indexOf("hb-") === -1 && directive.alias.name.indexOf("-") !== -1) {
+                el.classList.add(directive.alias.name);
+                el.setAttribute("ng-non-bindable", "");
             }
-            if (list && list.length && list.hasOwnProperty(0)) {
-                len = list.length;
-                while (i < len) {
-                    result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
-                    if (result !== undefined) {
-                        return result;
-                    }
-                    i += 1;
-                }
-            } else if (!(list instanceof Array) && list.length === undefined) {
-                for (i in list) {
-                    if (list.hasOwnProperty(i) && (!this.omit || !this.omit[i])) {
-                        result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
-                        if (result !== undefined) {
-                            return result;
+        };
+        var assets = [ name + ".css" ];
+        var urls = findScriptUrls(new RegExp(name + "(.min)?.js$"), "i");
+        if (urls.length) {
+            var scriptUrl = urls[0].substring(0, urls[0].lastIndexOf("/"));
+            var len = assets.length;
+            for (var i = 0; i < len; i += 1) {
+                assets[i] = scriptUrl + "/" + assets[i];
+            }
+            loader.load(assets, function() {
+                ready(function() {
+                    app.bootstrap(document.body);
+                });
+            });
+        }
+        return app;
+    });
+    //! node_modules/hbjs/src/hb/directives/model.js
+    internal("hbd.model", [ "hb.directive", "resolve", "query", "hb.debug", "throttle" ], function(directive, resolve, query, debug, throttle) {
+        directive("hbModel", function() {
+            var $ = query;
+            return {
+                link: [ "scope", "el", "alias", function(scope, el, alias) {
+                    var $el = $(el);
+                    scope.$watch(alias.value, setValue);
+                    function getProp() {
+                        if (el.hasOwnProperty("value") || el.__proto__.hasOwnProperty("value")) {
+                            return "value";
+                        } else if (el.hasOwnProperty("innerText") || el.__proto__.hasOwnProperty("innerText")) {
+                            return "innerText";
                         }
                     }
-                }
-            }
-            return list;
-        };
-        return each;
-    });
-    //! src/widgets/dummer/dummer.js
-    internal("dummer", [ "hb.directive", "query", "ContactService" ], function(directive, query, ContactService) {
-        directive("dummer", function() {
-            return {
-                scope: true,
-                tplUrl: "b92c9128_tpl0",
-                link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
-                    query(el).addClass(alias.name);
-                    if (!scope.model) {
-                        scope.model = {
-                            title: attr.title,
-                            text: ContactService.data
-                        };
+                    function setValue(value) {
+                        value = value === undefined ? "" : value;
+                        el[getProp()] = value;
                     }
+                    function getValue() {
+                        return el[getProp()] || "";
+                    }
+                    function eventHandler(evt) {
+                        resolve(scope).set(alias.value, getValue());
+                        var change = el.getAttribute("hb-change");
+                        if (change) {
+                            scope.$eval(change);
+                        }
+                        scope.$apply();
+                    }
+                    $el.bind("change keyup blur input onpropertychange", throttle(eventHandler, 10));
+                    scope.$on("$destroy", function() {
+                        $el.unbindAll();
+                    });
                 } ]
             };
         });
     });
-    //! node_modules/hbjs/src/utils/query/focus/select.js
-    //! pattern /("|')query\1/
-    //! import query.val
-    internal("query.cursor", [ "query" ], function(query) {
-        query.fn.getCursorPosition = function() {
-            if (this.length === 0) {
-                return -1;
-            }
-            return query(this, this.context).getSelectionStart();
-        };
-        query.fn.setCursorPosition = function(position) {
-            if (this.length === 0) {
-                return this;
-            }
-            return query(this, this.context).setSelection(position, position);
-        };
-        query.fn.getSelection = function() {
-            if (this.length === 0) {
-                return -1;
-            }
-            var s = query(this, this.context).getSelectionStart();
-            var e = query(this, this.context).getSelectionEnd();
-            return this[0].value.substring(s, e);
-        };
-        query.fn.getSelectionStart = function() {
-            if (this.length === 0) {
-                return -1;
-            }
-            var input = this[0];
-            var pos = input.value.length;
-            if (input.createTextRange) {
-                var r = document.selection.createRange().duplicate();
-                r.moveEnd("character", input.value.length);
-                if (r.text === "") {
-                    pos = input.value.length;
-                }
-                pos = input.value.lastIndexOf(r.text);
-            } else if (typeof input.selectionStart !== "undefined") {
-                pos = input.selectionStart;
-            }
-            return pos;
-        };
-        query.fn.getSelectionEnd = function() {
-            if (this.length === 0) {
-                return -1;
-            }
-            var input = this[0];
-            var pos = input.value.length;
-            if (input.createTextRange) {
-                var r = document.selection.createRange().duplicate();
-                r.moveStart("character", -input.value.length);
-                if (r.text === "") {
-                    pos = input.value.length;
-                }
-                pos = input.value.lastIndexOf(r.text);
-            } else if (typeof input.selectionEnd !== "undefined") {
-                pos = input.selectionEnd;
-            }
-            return pos;
-        };
-        query.fn.setSelection = function(selectionStart, selectionEnd) {
-            if (this.length === 0) {
-                return this;
-            }
-            var input = this[0];
-            if (input.createTextRange) {
-                var range = input.createTextRange();
-                range.collapse(true);
-                range.moveEnd("character", selectionEnd);
-                range.moveStart("character", selectionStart);
-                range.select();
-            } else if (input.setSelectionRange) {
-                input.setSelectionRange(selectionStart, selectionEnd);
+    //! node_modules/hbjs/src/utils/query/event/bind.js
+    internal("query.bind", [ "query" ], function(query) {
+        query.fn.bind = query.fn.on = function(events, handler) {
+            events = events.match(/\w+/gim);
+            var i = 0, event, len = events.length;
+            while (i < len) {
+                event = events[i];
+                this.each(function(index, el) {
+                    if (el.attachEvent) {
+                        el["e" + event + handler] = handler;
+                        el[event + handler] = function() {
+                            el["e" + event + handler](window.event);
+                        };
+                        el.attachEvent("on" + event, el[event + handler]);
+                    } else {
+                        el.addEventListener(event, handler, false);
+                    }
+                    if (!el.eventHolder) {
+                        el.eventHolder = [];
+                    }
+                    el.eventHolder[el.eventHolder.length] = [ event, handler ];
+                });
+                i += 1;
             }
             return this;
-        };
-        query.fn.setSelectionRange = function(range) {
-            var element = query(this, this.context);
-            switch (range) {
-              case "start":
-                element.setSelection(0, 0);
-                break;
-
-              case "end":
-                element.setSelection(element.val().length, element.val().length);
-                break;
-
-              case true:
-              case "all":
-                element.setSelection(0, element.val().length);
-                break;
-            }
-        };
-        query.fn.select = function() {
-            this.setSelectionRange(true);
-        };
-    });
-    //! node_modules/hbjs/src/utils/query/modify/val.js
-    internal("query.val", [ "query" ], function(query) {
-        query.fn.val = function(value) {
-            var el, result, i, len, options;
-            if (this.length) {
-                el = this[0];
-                if (arguments.length) {
-                    el.value = value;
-                } else {
-                    if (el.nodeName === "SELECT" && el.multiple) {
-                        result = [];
-                        i = 0;
-                        options = el.options;
-                        len = options.length;
-                        while (i < len) {
-                            if (options) {
-                                result.push(options[i].value || options[0].text);
-                            }
-                        }
-                        return result.length === 0 ? null : result;
-                    }
-                    return el.value;
-                }
-            }
         };
     });
     //! node_modules/hbjs/src/utils/query/query.js
@@ -370,6 +292,139 @@
         query.fn = {};
         return query;
     });
+    //! node_modules/hbjs/src/utils/query/focus/focus.js
+    //! pattern /("|')query\1/
+    internal("query.focus", [ "query" ], function(query) {
+        query.fn.focus = function(val) {
+            this.each(function(index, el) {
+                el.focus();
+            });
+            return this;
+        };
+    });
+    //! node_modules/hbjs/src/utils/query/focus/select.js
+    //! pattern /("|')query\1/
+    //! import query.val
+    internal("query.cursor", [ "query" ], function(query) {
+        query.fn.getCursorPosition = function() {
+            if (this.length === 0) {
+                return -1;
+            }
+            return query(this, this.context).getSelectionStart();
+        };
+        query.fn.setCursorPosition = function(position) {
+            if (this.length === 0) {
+                return this;
+            }
+            return query(this, this.context).setSelection(position, position);
+        };
+        query.fn.getSelection = function() {
+            if (this.length === 0) {
+                return -1;
+            }
+            var s = query(this, this.context).getSelectionStart();
+            var e = query(this, this.context).getSelectionEnd();
+            return this[0].value.substring(s, e);
+        };
+        query.fn.getSelectionStart = function() {
+            if (this.length === 0) {
+                return -1;
+            }
+            var input = this[0];
+            var pos = input.value.length;
+            if (input.createTextRange) {
+                var r = document.selection.createRange().duplicate();
+                r.moveEnd("character", input.value.length);
+                if (r.text === "") {
+                    pos = input.value.length;
+                }
+                pos = input.value.lastIndexOf(r.text);
+            } else if (typeof input.selectionStart !== "undefined") {
+                pos = input.selectionStart;
+            }
+            return pos;
+        };
+        query.fn.getSelectionEnd = function() {
+            if (this.length === 0) {
+                return -1;
+            }
+            var input = this[0];
+            var pos = input.value.length;
+            if (input.createTextRange) {
+                var r = document.selection.createRange().duplicate();
+                r.moveStart("character", -input.value.length);
+                if (r.text === "") {
+                    pos = input.value.length;
+                }
+                pos = input.value.lastIndexOf(r.text);
+            } else if (typeof input.selectionEnd !== "undefined") {
+                pos = input.selectionEnd;
+            }
+            return pos;
+        };
+        query.fn.setSelection = function(selectionStart, selectionEnd) {
+            if (this.length === 0) {
+                return this;
+            }
+            var input = this[0];
+            if (input.createTextRange) {
+                var range = input.createTextRange();
+                range.collapse(true);
+                range.moveEnd("character", selectionEnd);
+                range.moveStart("character", selectionStart);
+                range.select();
+            } else if (input.setSelectionRange) {
+                input.setSelectionRange(selectionStart, selectionEnd);
+            }
+            return this;
+        };
+        query.fn.setSelectionRange = function(range) {
+            var element = query(this, this.context);
+            switch (range) {
+              case "start":
+                element.setSelection(0, 0);
+                break;
+
+              case "end":
+                element.setSelection(element.val().length, element.val().length);
+                break;
+
+              case true:
+              case "all":
+                element.setSelection(0, element.val().length);
+                break;
+            }
+        };
+        query.fn.select = function() {
+            this.setSelectionRange(true);
+        };
+    });
+    //! node_modules/hbjs/src/utils/query/modify/val.js
+    internal("query.val", [ "query" ], function(query) {
+        query.fn.val = function(value) {
+            var el, result, i, len, options;
+            if (this.length) {
+                el = this[0];
+                if (arguments.length) {
+                    el.value = value;
+                } else {
+                    if (el.nodeName === "SELECT" && el.multiple) {
+                        result = [];
+                        i = 0;
+                        options = el.options;
+                        len = options.length;
+                        while (i < len) {
+                            if (options) {
+                                result.push(options[i].value || options[0].text);
+                            }
+                        }
+                        return result.length === 0 ? null : result;
+                    }
+                    return el.value;
+                }
+            }
+        };
+    });
     //! node_modules/hbjs/src/utils/query/mutate/replace.js
     //! pattern /(\w+|\))\.replace\(/
     //! pattern /("|')query\1/
@@ -386,36 +441,55 @@
             }
         };
     });
-    //! node_modules/hbjs/src/utils/query/modify/addClass.js
-    internal("query.addClass", [ "query" ], function(query) {
-        query.fn.addClass = function(className) {
-            var $el;
-            this.each(function(index, el) {
-                $el = query(el);
-                if (!$el.hasClass(className)) {
-                    el.className += " " + className;
+    //! node_modules/hbjs/src/utils/query/event/unbind.js
+    internal("query.unbind", [ "query" ], function(query) {
+        query.fn.unbind = query.fn.off = function(events, handler) {
+            if (arguments.length === 1) {
+                this.unbindAll(events);
+            } else {
+                events = events.match(/\w+/gim);
+                var i = 0, event, len = events.length;
+                while (i < len) {
+                    event = events[i];
+                    this.each(function(index, el) {
+                        if (el.detachEvent) {
+                            el.detachEvent("on" + event, el[event + handler]);
+                            el[event + handler] = null;
+                        } else {
+                            el.removeEventListener(event, handler, false);
+                        }
+                    });
+                    i += 1;
                 }
-            });
+            }
             return this;
         };
     });
-    //! node_modules/hbjs/src/utils/query/modify/hasClass.js
-    internal("query.hasClass", [ "query" ], function(query) {
-        query.fn.hasClass = function(className) {
-            var returnVal = false;
-            this.each(function(index, el) {
-                if (!returnVal) {
-                    if (el.classList) {
-                        returnVal = el.classList.contains(className);
-                    } else {
-                        returnVal = new RegExp("(^| )" + className + "( |$)", "gi").test(el.className);
-                    }
-                    if (returnVal) {
-                        return false;
+    //! node_modules/hbjs/src/utils/query/event/unbindAll.js
+    internal("query.unbindAll", [ "query" ], function(query) {
+        query.fn.unbindAll = function(event) {
+            var scope = this;
+            scope.each(function(index, el) {
+                if (el.eventHolder) {
+                    var removed = 0, handler;
+                    for (var i = 0; i < el.eventHolder.length; i++) {
+                        if (!event || el.eventHolder[i][0] === event) {
+                            event = el.eventHolder[i][0];
+                            handler = el.eventHolder[i][1];
+                            if (el.detachEvent) {
+                                el.detachEvent("on" + event, el[event + handler]);
+                                el[event + handler] = null;
+                            } else {
+                                el.removeEventListener(event, handler, false);
+                            }
+                            el.eventHolder.splice(i, 1);
+                            removed += 1;
+                            i -= 1;
+                        }
                     }
                 }
             });
-            return returnVal;
+            return scope;
         };
     });
     //! node_modules/hbjs/src/hb/utils/directive.js
@@ -437,292 +511,6 @@
             }
         };
         return val;
-    });
-    //! src/shared/services/ContactService.js
-    internal("ContactService", [ "http" ], function(http) {
-        var scope = this;
-        scope.data = {
-            title: "It's the end of the world as we know it."
-        };
-        return scope;
-    });
-    //! node_modules/hbjs/src/utils/ajax/http.js
-    internal("http", [ "extend" ], function(extend) {
-        var serialize = function(obj) {
-            var str = [];
-            for (var p in obj) if (obj.hasOwnProperty(p)) {
-                str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
-            }
-            return str.join("&");
-        };
-        var win = window, CORSxhr = function() {
-            var xhr;
-            if (win.XMLHttpRequest && "withCredentials" in new win.XMLHttpRequest()) {
-                xhr = win.XMLHttpRequest;
-            } else if (win.XDomainRequest) {
-                xhr = win.XDomainRequest;
-            }
-            return xhr;
-        }(), methods = [ "head", "get", "post", "put", "delete" ], i, methodsLength = methods.length, result = {};
-        function Request(options) {
-            this.init(options);
-        }
-        function getRequestResult(that) {
-            var headers = parseResponseHeaders(this.getAllResponseHeaders());
-            var response = this.responseText.trim();
-            var start;
-            var end;
-            if (response) {
-                start = response[0];
-                end = response[response.length - 1];
-            }
-            if (response && (start === "{" && end === "}") || start === "[" && end === "]") {
-                response = response ? JSON.parse(response.replace(/\/\*.*?\*\//g, "")) : response;
-            }
-            return {
-                data: response,
-                request: {
-                    method: that.method,
-                    url: that.url,
-                    data: that.data,
-                    headers: that.headers
-                },
-                headers: headers,
-                status: this.status
-            };
-        }
-        Request.prototype.init = function(options) {
-            var that = this;
-            that.xhr = new CORSxhr();
-            that.method = options.method;
-            that.url = options.url;
-            that.success = options.success;
-            that.error = options.error;
-            that.data = options.data;
-            that.headers = options.headers;
-            if (options.credentials === true) {
-                that.xhr.withCredentials = true;
-            }
-            that.send();
-            return that;
-        };
-        Request.prototype.send = function() {
-            var that = this;
-            if (that.method === "GET" && that.data) {
-                var concat = that.url.indexOf("?") > -1 ? "&" : "?";
-                that.url += concat + serialize(that.data);
-            } else {
-                that.data = JSON.stringify(that.data);
-            }
-            if (that.success !== undefined) {
-                that.xhr.onload = function() {
-                    var result = getRequestResult.call(this, that), self = this;
-                    function onLoad() {
-                        if (self.status >= 200 && self.status < 400) {
-                            that.success.call(self, result);
-                        } else if (that.error !== undefined) {
-                            that.error.call(self, result);
-                        }
-                    }
-                    if (this.onloadInterceptor) {
-                        this.onloadInterceptor(onLoad, result);
-                    } else {
-                        onLoad();
-                    }
-                };
-            }
-            if (that.error !== undefined) {
-                that.xhr.error = function() {
-                    var result = getRequestResult.call(this, that);
-                    that.error.call(this, result);
-                };
-            }
-            that.xhr.open(that.method, that.url, true);
-            if (that.headers !== undefined) {
-                that.setHeaders();
-            }
-            that.xhr.send(that.data, true);
-            return that;
-        };
-        Request.prototype.setHeaders = function() {
-            var that = this, headers = that.headers, key;
-            for (key in headers) {
-                if (headers.hasOwnProperty(key)) {
-                    that.xhr.setRequestHeader(key, headers[key]);
-                }
-            }
-            return that;
-        };
-        function parseResponseHeaders(str) {
-            var list = str.split("\n");
-            var headers = {};
-            var parts;
-            var i = 0, len = list.length;
-            while (i < len) {
-                parts = list[i].split(": ");
-                if (parts[0] && parts[1]) {
-                    parts[0] = parts[0].split("-").join("").split("");
-                    parts[0][0] = parts[0][0].toLowerCase();
-                    headers[parts[0].join("")] = parts[1];
-                }
-                i += 1;
-            }
-            return headers;
-        }
-        function addDefaults(options, defaults) {
-            return extend(options, defaults);
-        }
-        function handleInterceptor(options) {
-            return !!(result.intercept && result.intercept(options, Request));
-        }
-        for (i = 0; i < methodsLength; i += 1) {
-            (function() {
-                var method = methods[i];
-                result[method] = function(url, success, error) {
-                    var options = {};
-                    if (url === undefined) {
-                        throw new Error("CORS: url must be defined");
-                    }
-                    if (typeof url === "object") {
-                        options = url;
-                    } else {
-                        if (typeof success === "function") {
-                            options.success = success;
-                        }
-                        if (typeof error === "function") {
-                            options.error = error;
-                        }
-                        options.url = url;
-                    }
-                    options.method = method.toUpperCase();
-                    addDefaults(options, result.defaults);
-                    if (handleInterceptor(options)) {
-                        return;
-                    }
-                    return new Request(options).xhr;
-                };
-            })();
-        }
-        result.intercept = null;
-        result.defaults = {
-            headers: {}
-        };
-        return result;
-    });
-    //! node_modules/hbjs/src/utils/data/extend.js
-    internal("extend", [ "toArray" ], function(toArray) {
-        var extend = function(target, source) {
-            var args = toArray(arguments), i = 1, len = args.length, item, j;
-            var options = this || {}, copy;
-            if (!target && source && typeof source === "object") {
-                target = {};
-            }
-            while (i < len) {
-                item = args[i];
-                for (j in item) {
-                    if (item.hasOwnProperty(j)) {
-                        if (j === "length" && target instanceof Array) {} else if (target[j] && typeof target[j] === "object" && !item[j] instanceof Array) {
-                            target[j] = extend.apply(options, [ target[j], item[j] ]);
-                        } else if (item[j] instanceof Array) {
-                            copy = options && options.concat ? (target[j] || []).concat(item[j]) : item[j];
-                            if (options && options.arrayAsObject) {
-                                if (!target[j]) {
-                                    target[j] = {
-                                        length: copy.length
-                                    };
-                                }
-                                if (target[j] instanceof Array) {
-                                    target[j] = extend.apply(options, [ {}, target[j] ]);
-                                }
-                            } else {
-                                target[j] = target[j] || [];
-                            }
-                            if (copy.length) {
-                                target[j] = extend.apply(options, [ target[j], copy ]);
-                            }
-                        } else if (item[j] && typeof item[j] === "object") {
-                            if (options.objectAsArray && typeof item[j].length === "number") {
-                                if (!(target[j] instanceof Array)) {
-                                    target[j] = extend.apply(options, [ [], target[j] ]);
-                                }
-                            }
-                            target[j] = extend.apply(options, [ target[j] || {}, item[j] ]);
-                        } else if (options.override !== false || target[j] === undefined) {
-                            target[j] = item[j];
-                        }
-                    }
-                }
-                i += 1;
-            }
-            return target;
-        };
-        return extend;
-    });
-    //! node_modules/hbjs/src/utils/formatters/toArray.js
-    internal("toArray", [ "isArguments", "isArray", "isUndefined" ], function(isArguments, isArray, isUndefined) {
-        var toArray = function(value) {
-            if (isArguments(value)) {
-                return Array.prototype.slice.call(value, 0) || [];
-            }
-            try {
-                if (isArray(value)) {
-                    return value;
-                }
-                if (!isUndefined(value)) {
-                    return [].concat(value);
-                }
-            } catch (e) {}
-            return [];
-        };
-        return toArray;
-    });
-    //! node_modules/hbjs/src/utils/validators/isArguments.js
-    internal("isArguments", [ "toString" ], function(toString) {
-        var isArguments = function(value) {
-            var str = String(value);
-            var isArguments = str === "[object Arguments]";
-            if (!isArguments) {
-                isArguments = str !== "[object Array]" && value !== null && typeof value === "object" && typeof value.length === "number" && value.length >= 0 && (!value.callee || toString.call(value.callee) === "[object Function]");
-            }
-            return isArguments;
-        };
-        return isArguments;
-    });
-    //! node_modules/hbjs/src/utils/validators/isArray.js
-    internal("isArray", function() {
-        Array.prototype.__isArray = true;
-        Object.defineProperty(Array.prototype, "__isArray", {
-            enumerable: false,
-            writable: true
-        });
-        var isArray = function(val) {
-            return val ? !!val.__isArray : false;
-        };
-        return isArray;
-    });
-    //! node_modules/hbjs/src/utils/validators/isUndefined.js
-    internal("isUndefined", function() {
-        var isUndefined = function(val) {
-            return typeof val === "undefined";
-        };
-        return isUndefined;
-    });
-    //! src/widgets/dummer/label/label.js
-    internal("dummerLabel", [ "hb.directive", "resolve" ], function(directive, resolve) {
-        directive("dummerLabel", function() {
-            return {
-                scope: true,
-                tplUrl: "b92c9128_tpl1",
-                link: [ "scope", "el", "alias", function(scope, el, alias) {
-                    scope.$watch(alias.value, function(newVal) {
-                        scope.text = newVal;
-                    });
-                    scope.update = function() {
-                        resolve(scope).set(alias.value, "Goodbye.");
-                    };
-                } ]
-            };
-        });
     });
     //! node_modules/hbjs/src/utils/data/resolve.js
     internal("resolve", [ "isUndefined" ], function(isUndefined) {
@@ -780,59 +568,84 @@
         };
         return resolve;
     });
-    //! src/widgets/dummy/dummy.js
-    internal("dummy", [ "hb.directive", "query", "ContactService" ], function(directive, query, ContactService) {
-        directive("dummy", function() {
-            return {
-                scope: true,
-                tplUrl: "b92c9128_tpl2",
-                link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
-                    query(el).addClass(alias.name);
-                    if (!scope.model) {
-                        scope.model = {
-                            title: attr.title,
-                            text: ContactService.data
-                        };
-                    }
-                } ]
-            };
-        });
+    //! node_modules/hbjs/src/utils/validators/isUndefined.js
+    internal("isUndefined", function() {
+        var isUndefined = function(val) {
+            return typeof val === "undefined";
+        };
+        return isUndefined;
     });
-    //! src/widgets/dummy/label/label.js
-    internal("dummyLabel", [ "hb.directive", "resolve" ], function(directive, resolve) {
-        directive("dummyLabel", function() {
-            return {
-                scope: true,
-                tplUrl: "b92c9128_tpl3",
-                link: [ "scope", "el", "alias", function(scope, el, alias) {
-                    scope.$watch(alias.value, function(newVal) {
-                        scope.text = newVal;
-                    });
-                    scope.update = function() {
-                        resolve(scope).set(alias.value, "Goodbye.");
-                    };
-                } ]
-            };
-        });
+    //! node_modules/hbjs/src/hb/debug/debug.js
+    internal("hb.debug", function() {
+        var errors = {
+            E0: "",
+            E1: "",
+            E2: "",
+            E3: "",
+            E4: "",
+            E5: "",
+            E6a: "",
+            E6b: "",
+            E7: "",
+            E8: "",
+            E9: "",
+            E10: "",
+            E11: "",
+            E12: ""
+        };
+        var fn = function() {};
+        var statItem = {
+            clear: fn,
+            next: fn,
+            inc: fn,
+            dec: fn
+        };
+        var db = {
+            log: fn,
+            info: fn,
+            warn: fn,
+            error: fn,
+            stat: function() {
+                return statItem;
+            },
+            getStats: fn,
+            flushStats: fn
+        };
+        for (var i in errors) {
+            errors[i] = i;
+        }
+        return {
+            register: function() {
+                return db;
+            },
+            liveStats: fn,
+            getStats: fn,
+            logStats: fn,
+            stats: fn,
+            errors: errors
+        };
     });
-    //! node_modules/hbjs/src/hb/directives/cloak.js
-    //! pattern /hb\-cloak(\s|\=|>)/
-    internal("hbd.cloak", [ "hb.directive", "hb.eventStash" ], function(directive, events) {
-        directive("hbCloak", function() {
-            return {
-                link: [ "scope", "el", "alias", function(scope, el, alias) {
-                    scope.$on(events.HB_READY, function() {
-                        el.removeAttribute(alias.name);
-                    });
-                } ]
+    //! node_modules/hbjs/src/utils/async/throttle.js
+    internal("throttle", function() {
+        var throttle = function(func, threshhold, scope) {
+            threshhold = threshhold || 250;
+            var last, deferTimer;
+            return function() {
+                var context = scope || this;
+                var now = +new Date(), args = arguments;
+                if (last && now < last + threshhold) {
+                    clearTimeout(deferTimer);
+                    deferTimer = setTimeout(function() {
+                        last = now;
+                        func.apply(context, args);
+                    }, threshhold);
+                } else {
+                    last = now;
+                    func.apply(context, args);
+                }
             };
-        });
-    });
-    //! node_modules/hbjs/src/hb/eventStash.js
-    internal("hb.eventStash", function() {
-        var events = new function EventStash() {}();
-        events.HB_READY = "hb::ready";
-        return events;
+        };
+        return throttle;
     });
     //! node_modules/hbjs/src/hb/directives/events.js
     //! pattern /hb\-(click|mousedown|mouseup|keydown|keyup|touchstart|touchend|touchmove|animation\-start|animation\-end)\=/
@@ -933,381 +746,40 @@
         };
         return hb;
     });
-    //! node_modules/hbjs/src/utils/query/focus/focus.js
-    //! pattern /("|')query\1/
-    internal("query.focus", [ "query" ], function(query) {
-        query.fn.focus = function(val) {
-            this.each(function(index, el) {
-                el.focus();
-            });
-            return this;
-        };
-    });
-    //! .tmp_templates/templates_0.js
-    internal("templates_0", [ "app" ], function(app) {
-        app.template("b92c9128_tpl0", "<div>{{model}}</div><div dummer-label=model.text hb-click=update()></div>");
-        app.template("b92c9128_tpl1", "<div>He said: {{text}}!!!</div>");
-        app.template("b92c9128_tpl2", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
-        app.template("b92c9128_tpl3", "<div>You said: {{title}} {{text}}</div>");
-    });
-    //! src/app.js
-    internal("app", [ "module", "dispatcher", "ready", "loader", "findScriptUrls", "forEach" ], function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
-        var app = dispatcher(module("app"));
-        app.preLink = function(el, directive) {
-            if (directive.alias.name.indexOf("hb-") === -1 && directive.alias.name.indexOf("-") !== -1) {
-                el.classList.add(directive.alias.name);
-                el.setAttribute("ng-non-bindable", "");
-            }
-        };
-        var assets = [ "widgets.css" ];
-        var urls = findScriptUrls(/widgets(\.min)?\.js$/i);
-        if (urls.length) {
-            var scriptUrl = urls[0].substring(0, urls[0].lastIndexOf("/"));
-            var len = assets.length;
-            for (var i = 0; i < len; i += 1) {
-                assets[i] = scriptUrl + "/" + assets[i];
-            }
-            loader.load(assets, function() {
-                ready(function() {
-                    app.bootstrap(document.body);
-                });
-            });
+    //! node_modules/hbjs/src/utils/array/each.js
+    internal("each", function() {
+        function applyMethod(scope, method, item, index, list, extraArgs, all) {
+            var args = all ? [ item, index, list ] : [ item ];
+            return method.apply(scope, args.concat(extraArgs));
         }
-        return app;
-    });
-    //! node_modules/hbjs/src/hb/module.js
-    /*!
- import hbd.app
- import hbd.model
- import hbd.events
- import hb.directive
- */
-    internal("module", [ "hb", "hb.compiler", "hb.scope", "hb.val", "injector", "interpolator", "removeHTMLComments", "each", "ready", "hb.debug", "hb.eventStash" ], function(hb, compiler, scope, val, injector, interpolator, removeHTMLComments, each, ready, debug, events) {
-        events.RESIZE = "resize";
-        var modules = {};
-        function Module(name) {
-            var self = this;
-            self.name = name;
-            var rootEl;
-            var bootstraps = [];
-            var _injector = this.injector = injector();
-            var _interpolator = this.interpolator = interpolator(_injector);
-            var _compiler = compiler(self);
-            var compile = _compiler.compile;
-            var interpolate = _interpolator.invoke;
-            var injectorVal = _injector.val.bind(_injector);
-            var rootScope = scope(interpolate);
-            rootScope.$ignoreInterpolateErrors = true;
-            window.addEventListener("resize", function() {
-                rootScope && rootScope.$broadcast(events.RESIZE);
-            });
-            injectorVal("$rootScope", rootScope);
-            _injector.preProcessor = function(key, value) {
-                if (value && value.isClass) {
-                    return _injector.instantiate(value);
-                }
-            };
-            function findScope(el) {
-                if (!el) {
-                    return null;
-                }
-                if (el.scope) {
-                    return el.scope;
-                }
-                return findScope(el.parentNode);
+        var each = function(list, method) {
+            var i = 0, len, result, extraArgs;
+            if (arguments.length > 2) {
+                extraArgs = Array.prototype.slice.apply(arguments);
+                extraArgs.splice(0, 2);
             }
-            function bootstrap(el) {
-                if (el) {
-                    val.init(this);
-                    self.element(el);
-                    while (bootstraps.length) {
-                        _injector.invoke(bootstraps.shift(), self);
-                    }
-                    rootScope.$broadcast(events.HB_READY, self);
-                    rootScope.$apply();
-                }
-            }
-            function addChild(parentEl, htmlStr, overrideScope, data, prepend) {
-                if (!htmlStr) {
-                    return;
-                }
-                if (parentEl !== rootEl && rootEl.contains && !rootEl.contains(parentEl)) {
-                    throw new Error(debug.errors.E12, rootEl);
-                }
-                var scope = overrideScope || findScope(parentEl), child;
-                if (prepend) {
-                    parentEl.insertAdjacentHTML("afterbegin", removeHTMLComments(htmlStr));
-                    child = parentEl.children[0];
-                } else {
-                    parentEl.insertAdjacentHTML("beforeend", removeHTMLComments(htmlStr));
-                    child = parentEl.children[parentEl.children.length - 1];
-                }
-                return compileEl(child, overrideScope || scope, !!overrideScope, data);
-            }
-            function compileEl(el, scope, sameScope, data) {
-                var s = sameScope && scope || scope.$new(), i;
-                if (data) {
-                    for (i in data) {
-                        if (data.hasOwnProperty(i)) {
-                            s[i] = data[i];
-                        }
-                    }
-                }
-                _compiler.link(el, s);
-                compile(el, scope);
-                return el;
-            }
-            function removeChild(childEl) {
-                var list;
-                if (childEl.scope) {
-                    childEl.scope.$destroy();
-                    childEl.scope = null;
-                } else {
-                    list = childEl.querySelectorAll(name + "-id");
-                    each(list, removeChild);
-                }
-                childEl.remove();
-            }
-            function element(el) {
-                if (typeof el !== "undefined") {
-                    rootEl = el;
-                    _compiler.link(rootEl, rootScope);
-                    compile(rootEl, rootScope);
-                }
-                return rootEl;
-            }
-            function service(name, ClassRef) {
-                if (ClassRef === undefined) {
-                    return injectorVal(name);
-                }
-                ClassRef.isClass = true;
-                return injectorVal(name, ClassRef);
-            }
-            self.bindingMarkup = [ "{{", "}}" ];
-            self.elements = {};
-            self.bootstrap = bootstrap;
-            self.findScope = findScope;
-            self.addChild = addChild;
-            self.removeChild = removeChild;
-            self.compile = compileEl;
-            self.interpolate = interpolate;
-            self.invoke = _injector.invoke.bind(_injector);
-            self.element = element;
-            self.val = injectorVal;
-            self.factory = injectorVal;
-            self.service = service;
-            self.template = injectorVal;
-            self.parseBinds = function(scope, str) {
-                return _compiler.parseBinds(str, scope);
-            };
-        }
-        return function(name, forceNew) {
-            if (!name) {
-                throw debug.errors.E8;
-            }
-            var app = modules[name] = !forceNew && modules[name] || new Module(name);
-            if (!app.val("$app")) {
-                app.val("$app", app);
-                app.val("$window", window);
-                setTimeout(function() {
-                    ready(function() {
-                        var el = document.querySelector("[" + name + "-app]");
-                        if (el) {
-                            app.bootstrap(el);
-                        }
-                    });
-                });
-            }
-            return app;
-        };
-    });
-    //! node_modules/hbjs/src/hb/directives/model.js
-    internal("hbd.model", [ "hb.directive", "resolve", "query", "hb.debug", "throttle" ], function(directive, resolve, query, debug, throttle) {
-        directive("hbModel", function() {
-            var $ = query;
-            return {
-                link: [ "scope", "el", "alias", function(scope, el, alias) {
-                    var $el = $(el);
-                    scope.$watch(alias.value, setValue);
-                    function getProp() {
-                        if (el.hasOwnProperty("value") || el.__proto__.hasOwnProperty("value")) {
-                            return "value";
-                        } else if (el.hasOwnProperty("innerText") || el.__proto__.hasOwnProperty("innerText")) {
-                            return "innerText";
-                        }
-                    }
-                    function setValue(value) {
-                        value = value === undefined ? "" : value;
-                        el[getProp()] = value;
-                    }
-                    function getValue() {
-                        return el[getProp()] || "";
-                    }
-                    function eventHandler(evt) {
-                        resolve(scope).set(alias.value, getValue());
-                        var change = el.getAttribute("hb-change");
-                        if (change) {
-                            scope.$eval(change);
-                        }
-                        scope.$apply();
-                    }
-                    $el.bind("change keyup blur input onpropertychange", throttle(eventHandler, 10));
-                    scope.$on("$destroy", function() {
-                        $el.unbindAll();
-                    });
-                } ]
-            };
-        });
-    });
-    //! node_modules/hbjs/src/utils/query/event/bind.js
-    internal("query.bind", [ "query" ], function(query) {
-        query.fn.bind = query.fn.on = function(events, handler) {
-            events = events.match(/\w+/gim);
-            var i = 0, event, len = events.length;
-            while (i < len) {
-                event = events[i];
-                this.each(function(index, el) {
-                    if (el.attachEvent) {
-                        el["e" + event + handler] = handler;
-                        el[event + handler] = function() {
-                            el["e" + event + handler](window.event);
-                        };
-                        el.attachEvent("on" + event, el[event + handler]);
-                    } else {
-                        el.addEventListener(event, handler, false);
-                    }
-                    if (!el.eventHolder) {
-                        el.eventHolder = [];
-                    }
-                    el.eventHolder[el.eventHolder.length] = [ event, handler ];
-                });
-                i += 1;
-            }
-            return this;
-        };
-    });
-    //! node_modules/hbjs/src/utils/query/event/unbind.js
-    internal("query.unbind", [ "query" ], function(query) {
-        query.fn.unbind = query.fn.off = function(events, handler) {
-            if (arguments.length === 1) {
-                this.unbindAll(events);
-            } else {
-                events = events.match(/\w+/gim);
-                var i = 0, event, len = events.length;
+            if (list && list.length && list.hasOwnProperty(0)) {
+                len = list.length;
                 while (i < len) {
-                    event = events[i];
-                    this.each(function(index, el) {
-                        if (el.detachEvent) {
-                            el.detachEvent("on" + event, el[event + handler]);
-                            el[event + handler] = null;
-                        } else {
-                            el.removeEventListener(event, handler, false);
-                        }
-                    });
+                    result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
+                    if (result !== undefined) {
+                        return result;
+                    }
                     i += 1;
                 }
-            }
-            return this;
-        };
-    });
-    //! node_modules/hbjs/src/utils/query/event/unbindAll.js
-    internal("query.unbindAll", [ "query" ], function(query) {
-        query.fn.unbindAll = function(event) {
-            var scope = this;
-            scope.each(function(index, el) {
-                if (el.eventHolder) {
-                    var removed = 0, handler;
-                    for (var i = 0; i < el.eventHolder.length; i++) {
-                        if (!event || el.eventHolder[i][0] === event) {
-                            event = el.eventHolder[i][0];
-                            handler = el.eventHolder[i][1];
-                            if (el.detachEvent) {
-                                el.detachEvent("on" + event, el[event + handler]);
-                                el[event + handler] = null;
-                            } else {
-                                el.removeEventListener(event, handler, false);
-                            }
-                            el.eventHolder.splice(i, 1);
-                            removed += 1;
-                            i -= 1;
+            } else if (!(list instanceof Array) && list.length === undefined) {
+                for (i in list) {
+                    if (list.hasOwnProperty(i) && (!this.omit || !this.omit[i])) {
+                        result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
+                        if (result !== undefined) {
+                            return result;
                         }
                     }
                 }
-            });
-            return scope;
+            }
+            return list;
         };
-    });
-    //! node_modules/hbjs/src/hb/debug/debug.js
-    internal("hb.debug", function() {
-        var errors = {
-            E0: "",
-            E1: "",
-            E2: "",
-            E3: "",
-            E4: "",
-            E5: "",
-            E6a: "",
-            E6b: "",
-            E7: "",
-            E8: "",
-            E9: "",
-            E10: "",
-            E11: "",
-            E12: ""
-        };
-        var fn = function() {};
-        var statItem = {
-            clear: fn,
-            next: fn,
-            inc: fn,
-            dec: fn
-        };
-        var db = {
-            log: fn,
-            info: fn,
-            warn: fn,
-            error: fn,
-            stat: function() {
-                return statItem;
-            },
-            getStats: fn,
-            flushStats: fn
-        };
-        for (var i in errors) {
-            errors[i] = i;
-        }
-        return {
-            register: function() {
-                return db;
-            },
-            liveStats: fn,
-            getStats: fn,
-            logStats: fn,
-            stats: fn,
-            errors: errors
-        };
-    });
-    //! node_modules/hbjs/src/utils/async/throttle.js
-    internal("throttle", function() {
-        var throttle = function(func, threshhold, scope) {
-            threshhold = threshhold || 250;
-            var last, deferTimer;
-            return function() {
-                var context = scope || this;
-                var now = +new Date(), args = arguments;
-                if (last && now < last + threshhold) {
-                    clearTimeout(deferTimer);
-                    deferTimer = setTimeout(function() {
-                        last = now;
-                        func.apply(context, args);
-                    }, threshhold);
-                } else {
-                    last = now;
-                    func.apply(context, args);
-                }
-            };
-        };
-        return throttle;
+        return each;
     });
     //! node_modules/hbjs/src/hb/utils/compiler.js
     internal("hb.compiler", [ "each", "fromDashToCamel" ], function(each, fromDashToCamel) {
@@ -2137,12 +1609,193 @@
             return injector;
         };
     });
-    //! node_modules/hbjs/src/utils/validators/isFunction.js
-    internal("isFunction", function() {
-        var isFunction = function(val) {
-            return typeof val === "function";
+    //! node_modules/hbjs/src/hb/module.js
+    /*!
+ import hbd.app
+ import hbd.model
+ import hbd.events
+ import hb.directive
+ */
+    internal("module", [ "hb", "hb.compiler", "hb.scope", "hb.val", "injector", "interpolator", "removeHTMLComments", "each", "ready", "hb.debug", "hb.eventStash" ], function(hb, compiler, scope, val, injector, interpolator, removeHTMLComments, each, ready, debug, events) {
+        events.RESIZE = "resize";
+        var modules = {};
+        function Module(name) {
+            var self = this;
+            self.name = name;
+            var rootEl;
+            var bootstraps = [];
+            var _injector = this.injector = injector();
+            var _interpolator = this.interpolator = interpolator(_injector);
+            var _compiler = compiler(self);
+            var compile = _compiler.compile;
+            var interpolate = _interpolator.invoke;
+            var injectorVal = _injector.val.bind(_injector);
+            var rootScope = scope(interpolate);
+            rootScope.$ignoreInterpolateErrors = true;
+            window.addEventListener("resize", function() {
+                rootScope && rootScope.$broadcast(events.RESIZE);
+            });
+            injectorVal("$rootScope", rootScope);
+            _injector.preProcessor = function(key, value) {
+                if (value && value.isClass) {
+                    return _injector.instantiate(value);
+                }
+            };
+            function findScope(el) {
+                if (!el) {
+                    return null;
+                }
+                if (el.scope) {
+                    return el.scope;
+                }
+                return findScope(el.parentNode);
+            }
+            function bootstrap(el) {
+                if (el) {
+                    val.init(this);
+                    self.element(el);
+                    while (bootstraps.length) {
+                        _injector.invoke(bootstraps.shift(), self);
+                    }
+                    rootScope.$broadcast(events.HB_READY, self);
+                    rootScope.$apply();
+                }
+            }
+            function addChild(parentEl, htmlStr, overrideScope, data, prepend) {
+                if (!htmlStr) {
+                    return;
+                }
+                if (parentEl !== rootEl && rootEl.contains && !rootEl.contains(parentEl)) {
+                    throw new Error(debug.errors.E12, rootEl);
+                }
+                var scope = overrideScope || findScope(parentEl), child;
+                if (prepend) {
+                    parentEl.insertAdjacentHTML("afterbegin", removeHTMLComments(htmlStr));
+                    child = parentEl.children[0];
+                } else {
+                    parentEl.insertAdjacentHTML("beforeend", removeHTMLComments(htmlStr));
+                    child = parentEl.children[parentEl.children.length - 1];
+                }
+                return compileEl(child, overrideScope || scope, !!overrideScope, data);
+            }
+            function compileEl(el, scope, sameScope, data) {
+                var s = sameScope && scope || scope.$new(), i;
+                if (data) {
+                    for (i in data) {
+                        if (data.hasOwnProperty(i)) {
+                            s[i] = data[i];
+                        }
+                    }
+                }
+                _compiler.link(el, s);
+                compile(el, scope);
+                return el;
+            }
+            function removeChild(childEl) {
+                var list;
+                if (childEl.scope) {
+                    childEl.scope.$destroy();
+                    childEl.scope = null;
+                } else {
+                    list = childEl.querySelectorAll(name + "-id");
+                    each(list, removeChild);
+                }
+                childEl.remove();
+            }
+            function element(el) {
+                if (typeof el !== "undefined") {
+                    rootEl = el;
+                    _compiler.link(rootEl, rootScope);
+                    compile(rootEl, rootScope);
+                }
+                return rootEl;
+            }
+            function service(name, ClassRef) {
+                if (ClassRef === undefined) {
+                    return injectorVal(name);
+                }
+                ClassRef.isClass = true;
+                return injectorVal(name, ClassRef);
+            }
+            self.bindingMarkup = [ "{{", "}}" ];
+            self.elements = {};
+            self.bootstrap = bootstrap;
+            self.findScope = findScope;
+            self.addChild = addChild;
+            self.removeChild = removeChild;
+            self.compile = compileEl;
+            self.interpolate = interpolate;
+            self.invoke = _injector.invoke.bind(_injector);
+            self.element = element;
+            self.val = injectorVal;
+            self.factory = injectorVal;
+            self.service = service;
+            self.template = injectorVal;
+            self.parseBinds = function(scope, str) {
+                return _compiler.parseBinds(str, scope);
+            };
+        }
+        return function(name, forceNew) {
+            if (!name) {
+                throw debug.errors.E8;
+            }
+            var app = modules[name] = !forceNew && modules[name] || new Module(name);
+            if (!app.val("$app")) {
+                app.val("$app", app);
+                app.val("$window", window);
+                setTimeout(function() {
+                    ready(function() {
+                        var el = document.querySelector("[" + name + "-app]");
+                        if (el) {
+                            app.bootstrap(el);
+                        }
+                    });
+                });
+            }
+            return app;
         };
-        return isFunction;
+    });
+    //! node_modules/hbjs/src/utils/formatters/toArray.js
+    internal("toArray", [ "isArguments", "isArray", "isUndefined" ], function(isArguments, isArray, isUndefined) {
+        var toArray = function(value) {
+            if (isArguments(value)) {
+                return Array.prototype.slice.call(value, 0) || [];
+            }
+            try {
+                if (isArray(value)) {
+                    return value;
+                }
+                if (!isUndefined(value)) {
+                    return [].concat(value);
+                }
+            } catch (e) {}
+            return [];
+        };
+        return toArray;
+    });
+    //! node_modules/hbjs/src/utils/validators/isArguments.js
+    internal("isArguments", [ "toString" ], function(toString) {
+        var isArguments = function(value) {
+            var str = String(value);
+            var isArguments = str === "[object Arguments]";
+            if (!isArguments) {
+                isArguments = str !== "[object Array]" && value !== null && typeof value === "object" && typeof value.length === "number" && value.length >= 0 && (!value.callee || toString.call(value.callee) === "[object Function]");
+            }
+            return isArguments;
+        };
+        return isArguments;
+    });
+    //! node_modules/hbjs/src/utils/validators/isArray.js
+    internal("isArray", function() {
+        Array.prototype.__isArray = true;
+        Object.defineProperty(Array.prototype, "__isArray", {
+            enumerable: false,
+            writable: true
+        });
+        var isArray = function(val) {
+            return val ? !!val.__isArray : false;
+        };
+        return isArray;
     });
     //! node_modules/hbjs/src/utils/parsers/functionArgs.js
     internal("functionArgs", function() {
@@ -2360,6 +2013,12 @@
             win[ATTACH_EVENT]("onload", invokeCallbacks);
         }
         return ready;
+    });
+    //! node_modules/hbjs/src/hb/eventStash.js
+    internal("hb.eventStash", function() {
+        var events = new function EventStash() {}();
+        events.HB_READY = "hb::ready";
+        return events;
     });
     //! node_modules/hbjs/src/utils/async/dispatcher.js
     internal("dispatcher", [ "apply" ], function(apply) {
@@ -2657,6 +2316,348 @@
             }
             return matches;
         };
+    });
+    //! src/widgets/dummer/dummer.js
+    internal("dummer", [ "hb.directive", "query", "ContactService" ], function(directive, query, ContactService) {
+        directive("dummer", function() {
+            return {
+                scope: true,
+                tplUrl: "907981bd_tpl0",
+                link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
+                    query(el).addClass(alias.name);
+                    if (!scope.model) {
+                        scope.model = {
+                            title: attr.title,
+                            text: ContactService.data
+                        };
+                    }
+                } ]
+            };
+        });
+    });
+    //! node_modules/hbjs/src/utils/query/modify/addClass.js
+    internal("query.addClass", [ "query" ], function(query) {
+        query.fn.addClass = function(className) {
+            var $el;
+            this.each(function(index, el) {
+                $el = query(el);
+                if (!$el.hasClass(className)) {
+                    el.className += " " + className;
+                }
+            });
+            return this;
+        };
+    });
+    //! node_modules/hbjs/src/utils/query/modify/hasClass.js
+    internal("query.hasClass", [ "query" ], function(query) {
+        query.fn.hasClass = function(className) {
+            var returnVal = false;
+            this.each(function(index, el) {
+                if (!returnVal) {
+                    if (el.classList) {
+                        returnVal = el.classList.contains(className);
+                    } else {
+                        returnVal = new RegExp("(^| )" + className + "( |$)", "gi").test(el.className);
+                    }
+                    if (returnVal) {
+                        return false;
+                    }
+                }
+            });
+            return returnVal;
+        };
+    });
+    //! src/shared/services/ContactService.js
+    internal("ContactService", [ "http" ], function(http) {
+        var scope = this;
+        scope.data = {
+            title: "It's the end of the world as we know it."
+        };
+        return scope;
+    });
+    //! node_modules/hbjs/src/utils/ajax/http.js
+    internal("http", [ "extend" ], function(extend) {
+        var serialize = function(obj) {
+            var str = [];
+            for (var p in obj) if (obj.hasOwnProperty(p)) {
+                str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+            }
+            return str.join("&");
+        };
+        var win = window, CORSxhr = function() {
+            var xhr;
+            if (win.XMLHttpRequest && "withCredentials" in new win.XMLHttpRequest()) {
+                xhr = win.XMLHttpRequest;
+            } else if (win.XDomainRequest) {
+                xhr = win.XDomainRequest;
+            }
+            return xhr;
+        }(), methods = [ "head", "get", "post", "put", "delete" ], i, methodsLength = methods.length, result = {};
+        function Request(options) {
+            this.init(options);
+        }
+        function getRequestResult(that) {
+            var headers = parseResponseHeaders(this.getAllResponseHeaders());
+            var response = this.responseText.trim();
+            var start;
+            var end;
+            if (response) {
+                start = response[0];
+                end = response[response.length - 1];
+            }
+            if (response && (start === "{" && end === "}") || start === "[" && end === "]") {
+                response = response ? JSON.parse(response.replace(/\/\*.*?\*\//g, "")) : response;
+            }
+            return {
+                data: response,
+                request: {
+                    method: that.method,
+                    url: that.url,
+                    data: that.data,
+                    headers: that.headers
+                },
+                headers: headers,
+                status: this.status
+            };
+        }
+        Request.prototype.init = function(options) {
+            var that = this;
+            that.xhr = new CORSxhr();
+            that.method = options.method;
+            that.url = options.url;
+            that.success = options.success;
+            that.error = options.error;
+            that.data = options.data;
+            that.headers = options.headers;
+            if (options.credentials === true) {
+                that.xhr.withCredentials = true;
+            }
+            that.send();
+            return that;
+        };
+        Request.prototype.send = function() {
+            var that = this;
+            if (that.method === "GET" && that.data) {
+                var concat = that.url.indexOf("?") > -1 ? "&" : "?";
+                that.url += concat + serialize(that.data);
+            } else {
+                that.data = JSON.stringify(that.data);
+            }
+            if (that.success !== undefined) {
+                that.xhr.onload = function() {
+                    var result = getRequestResult.call(this, that), self = this;
+                    function onLoad() {
+                        if (self.status >= 200 && self.status < 400) {
+                            that.success.call(self, result);
+                        } else if (that.error !== undefined) {
+                            that.error.call(self, result);
+                        }
+                    }
+                    if (this.onloadInterceptor) {
+                        this.onloadInterceptor(onLoad, result);
+                    } else {
+                        onLoad();
+                    }
+                };
+            }
+            if (that.error !== undefined) {
+                that.xhr.error = function() {
+                    var result = getRequestResult.call(this, that);
+                    that.error.call(this, result);
+                };
+            }
+            that.xhr.open(that.method, that.url, true);
+            if (that.headers !== undefined) {
+                that.setHeaders();
+            }
+            that.xhr.send(that.data, true);
+            return that;
+        };
+        Request.prototype.setHeaders = function() {
+            var that = this, headers = that.headers, key;
+            for (key in headers) {
+                if (headers.hasOwnProperty(key)) {
+                    that.xhr.setRequestHeader(key, headers[key]);
+                }
+            }
+            return that;
+        };
+        function parseResponseHeaders(str) {
+            var list = str.split("\n");
+            var headers = {};
+            var parts;
+            var i = 0, len = list.length;
+            while (i < len) {
+                parts = list[i].split(": ");
+                if (parts[0] && parts[1]) {
+                    parts[0] = parts[0].split("-").join("").split("");
+                    parts[0][0] = parts[0][0].toLowerCase();
+                    headers[parts[0].join("")] = parts[1];
+                }
+                i += 1;
+            }
+            return headers;
+        }
+        function addDefaults(options, defaults) {
+            return extend(options, defaults);
+        }
+        function handleInterceptor(options) {
+            return !!(result.intercept && result.intercept(options, Request));
+        }
+        for (i = 0; i < methodsLength; i += 1) {
+            (function() {
+                var method = methods[i];
+                result[method] = function(url, success, error) {
+                    var options = {};
+                    if (url === undefined) {
+                        throw new Error("CORS: url must be defined");
+                    }
+                    if (typeof url === "object") {
+                        options = url;
+                    } else {
+                        if (typeof success === "function") {
+                            options.success = success;
+                        }
+                        if (typeof error === "function") {
+                            options.error = error;
+                        }
+                        options.url = url;
+                    }
+                    options.method = method.toUpperCase();
+                    addDefaults(options, result.defaults);
+                    if (handleInterceptor(options)) {
+                        return;
+                    }
+                    return new Request(options).xhr;
+                };
+            })();
+        }
+        result.intercept = null;
+        result.defaults = {
+            headers: {}
+        };
+        return result;
+    });
+    //! node_modules/hbjs/src/utils/data/extend.js
+    internal("extend", [ "toArray" ], function(toArray) {
+        var extend = function(target, source) {
+            var args = toArray(arguments), i = 1, len = args.length, item, j;
+            var options = this || {}, copy;
+            if (!target && source && typeof source === "object") {
+                target = {};
+            }
+            while (i < len) {
+                item = args[i];
+                for (j in item) {
+                    if (item.hasOwnProperty(j)) {
+                        if (j === "length" && target instanceof Array) {} else if (target[j] && typeof target[j] === "object" && !item[j] instanceof Array) {
+                            target[j] = extend.apply(options, [ target[j], item[j] ]);
+                        } else if (item[j] instanceof Array) {
+                            copy = options && options.concat ? (target[j] || []).concat(item[j]) : item[j];
+                            if (options && options.arrayAsObject) {
+                                if (!target[j]) {
+                                    target[j] = {
+                                        length: copy.length
+                                    };
+                                }
+                                if (target[j] instanceof Array) {
+                                    target[j] = extend.apply(options, [ {}, target[j] ]);
+                                }
+                            } else {
+                                target[j] = target[j] || [];
+                            }
+                            if (copy.length) {
+                                target[j] = extend.apply(options, [ target[j], copy ]);
+                            }
+                        } else if (item[j] && typeof item[j] === "object") {
+                            if (options.objectAsArray && typeof item[j].length === "number") {
+                                if (!(target[j] instanceof Array)) {
+                                    target[j] = extend.apply(options, [ [], target[j] ]);
+                                }
+                            }
+                            target[j] = extend.apply(options, [ target[j] || {}, item[j] ]);
+                        } else if (options.override !== false || target[j] === undefined) {
+                            target[j] = item[j];
+                        }
+                    }
+                }
+                i += 1;
+            }
+            return target;
+        };
+        return extend;
+    });
+    //! src/widgets/dummer/label/label.js
+    internal("dummerLabel", [ "hb.directive", "resolve" ], function(directive, resolve) {
+        directive("dummerLabel", function() {
+            return {
+                scope: true,
+                tplUrl: "907981bd_tpl1",
+                link: [ "scope", "el", "alias", function(scope, el, alias) {
+                    scope.$watch(alias.value, function(newVal) {
+                        scope.text = newVal;
+                    });
+                    scope.update = function() {
+                        resolve(scope).set(alias.value, "Goodbye.");
+                    };
+                } ]
+            };
+        });
+    });
+    //! src/widgets/dummy/dummy.js
+    internal("dummy", [ "hb.directive", "query", "ContactService" ], function(directive, query, ContactService) {
+        directive("dummy", function() {
+            return {
+                scope: true,
+                tplUrl: "907981bd_tpl2",
+                link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
+                    query(el).addClass(alias.name);
+                    if (!scope.model) {
+                        scope.model = {
+                            title: attr.title,
+                            text: ContactService.data
+                        };
+                    }
+                } ]
+            };
+        });
+    });
+    //! src/widgets/dummy/label/label.js
+    internal("dummyLabel", [ "hb.directive", "resolve" ], function(directive, resolve) {
+        directive("dummyLabel", function() {
+            return {
+                scope: true,
+                tplUrl: "907981bd_tpl3",
+                link: [ "scope", "el", "alias", function(scope, el, alias) {
+                    scope.$watch(alias.value, function(newVal) {
+                        scope.text = newVal;
+                    });
+                    scope.update = function() {
+                        resolve(scope).set(alias.value, "Goodbye.");
+                    };
+                } ]
+            };
+        });
+    });
+    //! node_modules/hbjs/src/hb/directives/cloak.js
+    //! pattern /hb\-cloak(\s|\=|>)/
+    internal("hbd.cloak", [ "hb.directive", "hb.eventStash" ], function(directive, events) {
+        directive("hbCloak", function() {
+            return {
+                link: [ "scope", "el", "alias", function(scope, el, alias) {
+                    scope.$on(events.HB_READY, function() {
+                        el.removeAttribute(alias.name);
+                    });
+                } ]
+            };
+        });
+    });
+    //! .tmp_templates/templates_0.js
+    internal("templates_0", [ "app" ], function(app) {
+        app.template("907981bd_tpl0", "<div>{{model}}</div><div dummer-label=model.text hb-click=update()></div>");
+        app.template("907981bd_tpl1", "<div>He said: {{text}}!!!</div>");
+        app.template("907981bd_tpl2", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
+        app.template("907981bd_tpl3", "<div>You said: {{title}} {{text}}</div>");
     });
     for (var name in cache) {
         resolve(name, cache[name]);
