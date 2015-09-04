@@ -166,6 +166,6 @@ module.exports = function(grunt) {
   grunt.initConfig(config);
 
   // register tasks
-  grunt.registerTask('default', ['clean:dist', 'compile', 'copy']);
+  grunt.registerTask('default', ['clean:dist', 'compile']); // , 'copy'
   grunt.registerTask('test', 'jasmine');
 };
