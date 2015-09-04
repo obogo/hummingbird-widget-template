@@ -1,0 +1,20 @@
+
+.dummer {
+  display: block;
+  background: #ecf0f1;
+}
+.dummer-label {
+  font-family: Arial, sans-serif;
+  background: #9b59b6;
+  color: #fff;
+  padding: 10px 15px;
+  cursor: pointer;
+}
+
+
+.dummy-label {
+  font-family: Arial, sans-serif;
+  background: #f39c12;
+  padding: 10px 15px;
+}
+
