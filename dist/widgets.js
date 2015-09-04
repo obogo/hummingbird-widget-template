@@ -70,85 +70,47 @@
         });
         delete pending[name];
     };
-    //! node_modules/hbjs/src/hb/directives/events.js
-    //! pattern /hb\-(click|mousedown|mouseup|keydown|keyup|touchstart|touchend|touchmove|animation\-start|animation\-end)\=/
-    internal("hbd.events", [ "hb", "hb.val", "each" ], function(hb, val, each) {
-        var UI_EVENTS = "click mousedown mouseup mouseover mouseout keydown keyup touchstart touchend touchmove".split(" ");
-        var pfx = [ "webkit", "moz", "MS", "o", "" ];
-        var ANIME_EVENTS = "AnimationStart AnimationEnd".split(" ");
-        function onAnime(element, eventType, callback) {
-            for (var p = 0; p < pfx.length; p++) {
-                if (!pfx[p]) {
-                    eventType = eventType.toLowerCase();
-                }
-                element.addEventListener(pfx[p] + eventType, callback, false);
-            }
+    //! node_modules/hbjs/src/utils/array/each.js
+    internal("each", function() {
+        function applyMethod(scope, method, item, index, list, extraArgs, all) {
+            var args = all ? [ item, index, list ] : [ item ];
+            return method.apply(scope, args.concat(extraArgs));
         }
-        function offAnime(element, eventType, callback) {
-            for (var p = 0; p < pfx.length; p++) {
-                if (!pfx[p]) {
-                    eventType = eventType.toLowerCase();
-                }
-                element.addEventListener(pfx[p] + eventType, callback, false);
+        var each = function(list, method) {
+            var i = 0, len, result, extraArgs;
+            if (arguments.length > 2) {
+                extraArgs = Array.prototype.slice.apply(arguments);
+                extraArgs.splice(0, 2);
             }
-        }
-        each(ANIME_EVENTS, function(eventName) {
-            val("hb" + eventName, [ "$app", function($app) {
-                return {
-                    link: [ "scope", "el", "alias", function(scope, el, alias) {
-                        var bindOnce = scope.$isBindONce(alias.value);
-                        function unlisten() {
-                            offAnime(el, eventName, handle);
+            if (list && list.length && list.hasOwnProperty(0)) {
+                len = list.length;
+                while (i < len) {
+                    result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
+                    if (result !== undefined) {
+                        return result;
+                    }
+                    i += 1;
+                }
+            } else if (!(list instanceof Array) && list.length === undefined) {
+                for (i in list) {
+                    if (list.hasOwnProperty(i) && (!this.omit || !this.omit[i])) {
+                        result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
+                        if (result !== undefined) {
+                            return result;
                         }
-                        function handle(evt) {
-                            if (evt.currentTarget.nodeName.toLowerCase() === "a") {
-                                evt.preventDefault();
-                            }
-                            scope.$event = evt;
-                            bindOnce && unlisten();
-                            if (evt.target === el) {
-                                $app.interpolate(scope, alias.value);
-                                scope.$apply();
-                            }
-                            return false;
-                        }
-                        onAnime(el, eventName, handle);
-                        scope.$on("$destroy", unlisten);
-                    } ]
-                };
-            } ], "event");
-        });
-        each(UI_EVENTS, function(eventName) {
-            val("hb" + eventName.charAt(0).toUpperCase() + eventName.substr(1), [ "$app", function($app) {
-                return {
-                    link: [ "scope", "el", "alias", function(scope, el, alias) {
-                        var bindOnce = scope.$isBindOnce(alias.value);
-                        function unlisten() {
-                            hb.off(el, eventName, handle);
-                        }
-                        function handle(evt) {
-                            if (evt.currentTarget.nodeName.toLowerCase() === "a") {
-                                evt.preventDefault();
-                            }
-                            scope.$event = evt;
-                            bindOnce && unlisten();
-                            $app.interpolate(scope, alias.value);
-                            scope.$apply();
-                            return false;
-                        }
-                        hb.on(el, eventName, handle);
-                        scope.$on("$destroy", unlisten);
-                    } ]
-                };
-            } ], "event");
-        });
+                    }
+                }
+            }
+            return list;
+        };
+        return each;
     });
     //! src/widgets/dummer/dummer.js
     internal("dummer", [ "hb.directive", "query", "ContactService" ], function(directive, query, ContactService) {
         directive("dummer", function() {
             return {
                 scope: true,
-                tplUrl: "02e46b40_tpl0",
+                tplUrl: "b92c9128_tpl0",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     query(el).addClass(alias.name);
                     if (!scope.model) {
@@ -285,7 +247,7 @@
         };
     });
     //! node_modules/hbjs/src/utils/query/query.js
-    define("query", function() {
+    internal("query", function() {
         function Query(selector, context) {
             this.init(selector, context);
         }
@@ -476,7 +438,7 @@
         };
         return val;
     });
-    //! src/services/ContactService.js
+    //! src/shared/services/ContactService.js
     internal("ContactService", [ "http" ], function(http) {
         var scope = this;
         scope.data = {
@@ -485,7 +447,7 @@
         return scope;
     });
     //! node_modules/hbjs/src/utils/ajax/http.js
-    define("http", [ "extend" ], function(extend) {
+    internal("http", [ "extend" ], function(extend) {
         var serialize = function(obj) {
             var str = [];
             for (var p in obj) if (obj.hasOwnProperty(p)) {
@@ -648,7 +610,7 @@
         return result;
     });
     //! node_modules/hbjs/src/utils/data/extend.js
-    define("extend", [ "toArray" ], function(toArray) {
+    internal("extend", [ "toArray" ], function(toArray) {
         var extend = function(target, source) {
             var args = toArray(arguments), i = 1, len = args.length, item, j;
             var options = this || {}, copy;
@@ -697,7 +659,7 @@
         return extend;
     });
     //! node_modules/hbjs/src/utils/formatters/toArray.js
-    define("toArray", [ "isArguments", "isArray", "isUndefined" ], function(isArguments, isArray, isUndefined) {
+    internal("toArray", [ "isArguments", "isArray", "isUndefined" ], function(isArguments, isArray, isUndefined) {
         var toArray = function(value) {
             if (isArguments(value)) {
                 return Array.prototype.slice.call(value, 0) || [];
@@ -715,7 +677,7 @@
         return toArray;
     });
     //! node_modules/hbjs/src/utils/validators/isArguments.js
-    define("isArguments", [ "toString" ], function(toString) {
+    internal("isArguments", [ "toString" ], function(toString) {
         var isArguments = function(value) {
             var str = String(value);
             var isArguments = str === "[object Arguments]";
@@ -727,7 +689,7 @@
         return isArguments;
     });
     //! node_modules/hbjs/src/utils/validators/isArray.js
-    define("isArray", function() {
+    internal("isArray", function() {
         Array.prototype.__isArray = true;
         Object.defineProperty(Array.prototype, "__isArray", {
             enumerable: false,
@@ -739,7 +701,7 @@
         return isArray;
     });
     //! node_modules/hbjs/src/utils/validators/isUndefined.js
-    define("isUndefined", function() {
+    internal("isUndefined", function() {
         var isUndefined = function(val) {
             return typeof val === "undefined";
         };
@@ -750,7 +712,7 @@
         directive("dummerLabel", function() {
             return {
                 scope: true,
-                tplUrl: "02e46b40_tpl1",
+                tplUrl: "b92c9128_tpl1",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -763,7 +725,7 @@
         });
     });
     //! node_modules/hbjs/src/utils/data/resolve.js
-    define("resolve", [ "isUndefined" ], function(isUndefined) {
+    internal("resolve", [ "isUndefined" ], function(isUndefined) {
         function Resolve(data) {
             this.data = data || {};
         }
@@ -823,7 +785,7 @@
         directive("dummy", function() {
             return {
                 scope: true,
-                tplUrl: "02e46b40_tpl2",
+                tplUrl: "b92c9128_tpl2",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     query(el).addClass(alias.name);
                     if (!scope.model) {
@@ -841,7 +803,7 @@
         directive("dummyLabel", function() {
             return {
                 scope: true,
-                tplUrl: "02e46b40_tpl3",
+                tplUrl: "b92c9128_tpl3",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -852,70 +814,6 @@
                 } ]
             };
         });
-    });
-    //! src/widgets/platform/platform.js
-    internal("platform", [ "hb.directive", "ready", "ContactService" ], function(directive, ready, ContactService) {
-        ready(function() {
-            document.body.insertAdjacentHTML("beforeEnd", "<platform></platform>");
-        });
-        directive("platform", function() {
-            return {
-                scope: true,
-                tplUrl: "02e46b40_tpl4",
-                link: [ "scope", "el", "attr", function(scope, el, attr) {
-                    scope.model = {
-                        title: attr.title,
-                        text: ContactService.data.title
-                    };
-                    scope.addWidget = function(widgetScope) {
-                        console.log("widget added", widgetScope);
-                    };
-                } ]
-            };
-        });
-    });
-    //! node_modules/hbjs/src/utils/browser/ready.js
-    define("ready", function() {
-        var callbacks = [], win = window, doc = document, ADD_EVENT_LISTENER = "addEventListener", REMOVE_EVENT_LISTENER = "removeEventListener", ATTACH_EVENT = "attachEvent", DETACH_EVENT = "detachEvent", DOM_CONTENT_LOADED = "DOMContentLoaded", ON_READY_STATE_CHANGE = "onreadystatechange", COMPLETE = "complete", READY_STATE = "readyState";
-        var ready = function(callback) {
-            callbacks.push(callback);
-            if (doc[READY_STATE] === COMPLETE) {
-                setTimeout(invokeCallbacks);
-            }
-        };
-        var DOMContentLoaded;
-        function invokeCallbacks() {
-            var i = 0, len = callbacks.length;
-            while (i < len) {
-                callbacks[i]();
-                i += 1;
-            }
-            callbacks.length = 0;
-        }
-        if (doc[ADD_EVENT_LISTENER]) {
-            DOMContentLoaded = function() {
-                doc[REMOVE_EVENT_LISTENER](DOM_CONTENT_LOADED, DOMContentLoaded, false);
-                invokeCallbacks();
-            };
-        } else if (doc.attachEvent) {
-            DOMContentLoaded = function() {
-                if (doc[READY_STATE] === COMPLETE) {
-                    doc[DETACH_EVENT](ON_READY_STATE_CHANGE, DOMContentLoaded);
-                    invokeCallbacks();
-                }
-            };
-        }
-        if (doc[READY_STATE] === COMPLETE) {
-            setTimeout(invokeCallbacks, 1);
-        }
-        if (doc[ADD_EVENT_LISTENER]) {
-            doc[ADD_EVENT_LISTENER](DOM_CONTENT_LOADED, DOMContentLoaded, false);
-            win[ADD_EVENT_LISTENER]("load", invokeCallbacks, false);
-        } else if (doc[ATTACH_EVENT]) {
-            doc[ATTACH_EVENT](ON_READY_STATE_CHANGE, DOMContentLoaded);
-            win[ATTACH_EVENT]("onload", invokeCallbacks);
-        }
-        return ready;
     });
     //! node_modules/hbjs/src/hb/directives/cloak.js
     //! pattern /hb\-cloak(\s|\=|>)/
@@ -931,20 +829,83 @@
         });
     });
     //! node_modules/hbjs/src/hb/eventStash.js
-    define("hb.eventStash", function() {
+    internal("hb.eventStash", function() {
         var events = new function EventStash() {}();
         events.HB_READY = "hb::ready";
         return events;
     });
-    //! node_modules/hbjs/src/utils/query/focus/focus.js
-    //! pattern /("|')query\1/
-    internal("query.focus", [ "query" ], function(query) {
-        query.fn.focus = function(val) {
-            this.each(function(index, el) {
-                el.focus();
-            });
-            return this;
-        };
+    //! node_modules/hbjs/src/hb/directives/events.js
+    //! pattern /hb\-(click|mousedown|mouseup|keydown|keyup|touchstart|touchend|touchmove|animation\-start|animation\-end)\=/
+    internal("hbd.events", [ "hb", "hb.val", "each" ], function(hb, val, each) {
+        var UI_EVENTS = "click mousedown mouseup mouseover mouseout keydown keyup touchstart touchend touchmove".split(" ");
+        var pfx = [ "webkit", "moz", "MS", "o", "" ];
+        var ANIME_EVENTS = "AnimationStart AnimationEnd".split(" ");
+        function onAnime(element, eventType, callback) {
+            for (var p = 0; p < pfx.length; p++) {
+                if (!pfx[p]) {
+                    eventType = eventType.toLowerCase();
+                }
+                element.addEventListener(pfx[p] + eventType, callback, false);
+            }
+        }
+        function offAnime(element, eventType, callback) {
+            for (var p = 0; p < pfx.length; p++) {
+                if (!pfx[p]) {
+                    eventType = eventType.toLowerCase();
+                }
+                element.addEventListener(pfx[p] + eventType, callback, false);
+            }
+        }
+        each(ANIME_EVENTS, function(eventName) {
+            val("hb" + eventName, [ "$app", function($app) {
+                return {
+                    link: [ "scope", "el", "alias", function(scope, el, alias) {
+                        var bindOnce = scope.$isBindONce(alias.value);
+                        function unlisten() {
+                            offAnime(el, eventName, handle);
+                        }
+                        function handle(evt) {
+                            if (evt.currentTarget.nodeName.toLowerCase() === "a") {
+                                evt.preventDefault();
+                            }
+                            scope.$event = evt;
+                            bindOnce && unlisten();
+                            if (evt.target === el) {
+                                $app.interpolate(scope, alias.value);
+                                scope.$apply();
+                            }
+                            return false;
+                        }
+                        onAnime(el, eventName, handle);
+                        scope.$on("$destroy", unlisten);
+                    } ]
+                };
+            } ], "event");
+        });
+        each(UI_EVENTS, function(eventName) {
+            val("hb" + eventName.charAt(0).toUpperCase() + eventName.substr(1), [ "$app", function($app) {
+                return {
+                    link: [ "scope", "el", "alias", function(scope, el, alias) {
+                        var bindOnce = scope.$isBindOnce(alias.value);
+                        function unlisten() {
+                            hb.off(el, eventName, handle);
+                        }
+                        function handle(evt) {
+                            if (evt.currentTarget.nodeName.toLowerCase() === "a") {
+                                evt.preventDefault();
+                            }
+                            scope.$event = evt;
+                            bindOnce && unlisten();
+                            $app.interpolate(scope, alias.value);
+                            scope.$apply();
+                            return false;
+                        }
+                        hb.on(el, eventName, handle);
+                        scope.$on("$destroy", unlisten);
+                    } ]
+                };
+            } ], "event");
+        });
     });
     //! node_modules/hbjs/src/hb/hb.js
     internal("hb", function() {
@@ -972,51 +933,25 @@
         };
         return hb;
     });
-    //! node_modules/hbjs/src/utils/array/each.js
-    define("each", function() {
-        function applyMethod(scope, method, item, index, list, extraArgs, all) {
-            var args = all ? [ item, index, list ] : [ item ];
-            return method.apply(scope, args.concat(extraArgs));
-        }
-        var each = function(list, method) {
-            var i = 0, len, result, extraArgs;
-            if (arguments.length > 2) {
-                extraArgs = Array.prototype.slice.apply(arguments);
-                extraArgs.splice(0, 2);
-            }
-            if (list && list.length && list.hasOwnProperty(0)) {
-                len = list.length;
-                while (i < len) {
-                    result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
-                    if (result !== undefined) {
-                        return result;
-                    }
-                    i += 1;
-                }
-            } else if (!(list instanceof Array) && list.length === undefined) {
-                for (i in list) {
-                    if (list.hasOwnProperty(i) && (!this.omit || !this.omit[i])) {
-                        result = applyMethod(this.scope, method, list[i], i, list, extraArgs, this.all);
-                        if (result !== undefined) {
-                            return result;
-                        }
-                    }
-                }
-            }
-            return list;
+    //! node_modules/hbjs/src/utils/query/focus/focus.js
+    //! pattern /("|')query\1/
+    internal("query.focus", [ "query" ], function(query) {
+        query.fn.focus = function(val) {
+            this.each(function(index, el) {
+                el.focus();
+            });
+            return this;
         };
-        return each;
     });
     //! .tmp_templates/templates_0.js
     internal("templates_0", [ "app" ], function(app) {
-        app.template("02e46b40_tpl0", "<div>{{model}}</div><div dummer-label=model.text hb-click=update()></div>");
-        app.template("02e46b40_tpl1", "<div>He said: {{text}}!!!</div>");
-        app.template("02e46b40_tpl2", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
-        app.template("02e46b40_tpl3", "<div>You said: {{title}} {{text}}</div>");
-        app.template("02e46b40_tpl4", "<dummy title=hello></dummy><dummer title=hello></dummer>");
+        app.template("b92c9128_tpl0", "<div>{{model}}</div><div dummer-label=model.text hb-click=update()></div>");
+        app.template("b92c9128_tpl1", "<div>He said: {{text}}!!!</div>");
+        app.template("b92c9128_tpl2", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
+        app.template("b92c9128_tpl3", "<div>You said: {{title}} {{text}}</div>");
     });
     //! src/app.js
-    define("app", [ "module", "dispatcher", "ready", "loader", "findScriptUrls", "forEach" ], function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
+    internal("app", [ "module", "dispatcher", "ready", "loader", "findScriptUrls", "forEach" ], function(module, dispatcher, ready, loader, findScriptUrls, forEach) {
         var app = dispatcher(module("app"));
         app.preLink = function(el, directive) {
             if (directive.alias.name.indexOf("hb-") === -1 && directive.alias.name.indexOf("-") !== -1) {
@@ -1047,7 +982,7 @@
  import hbd.events
  import hb.directive
  */
-    define("module", [ "hb", "hb.compiler", "hb.scope", "hb.val", "injector", "interpolator", "removeHTMLComments", "each", "ready", "hb.debug", "hb.eventStash" ], function(hb, compiler, scope, val, injector, interpolator, removeHTMLComments, each, ready, debug, events) {
+    internal("module", [ "hb", "hb.compiler", "hb.scope", "hb.val", "injector", "interpolator", "removeHTMLComments", "each", "ready", "hb.debug", "hb.eventStash" ], function(hb, compiler, scope, val, injector, interpolator, removeHTMLComments, each, ready, debug, events) {
         events.RESIZE = "resize";
         var modules = {};
         function Module(name) {
@@ -1353,7 +1288,7 @@
         };
     });
     //! node_modules/hbjs/src/utils/async/throttle.js
-    define("throttle", function() {
+    internal("throttle", function() {
         var throttle = function(func, threshhold, scope) {
             threshhold = threshhold || 250;
             var last, deferTimer;
@@ -1584,7 +1519,7 @@
         };
     });
     //! node_modules/hbjs/src/utils/formatters/fromDashToCamel.js
-    define("fromDashToCamel", function() {
+    internal("fromDashToCamel", function() {
         var rx = /-([a-z])/g;
         function fn(g) {
             return g[1].toUpperCase();
@@ -2095,7 +2030,7 @@
         };
     });
     //! node_modules/hbjs/src/utils/data/apply.js
-    define("apply", function() {
+    internal("apply", function() {
         return function(func, scope, args) {
             args = args || [];
             switch (args.length) {
@@ -2124,7 +2059,7 @@
         };
     });
     //! node_modules/hbjs/src/utils/patterns/injector.js
-    define("injector", [ "isFunction", "toArray", "functionArgs", "apply" ], function(isFunction, toArray, functionArgs, apply) {
+    internal("injector", [ "isFunction", "toArray", "functionArgs", "apply" ], function(isFunction, toArray, functionArgs, apply) {
         var string = "string", func = "function", proto = Injector.prototype;
         function functionOrArray(fn) {
             var f;
@@ -2203,14 +2138,14 @@
         };
     });
     //! node_modules/hbjs/src/utils/validators/isFunction.js
-    define("isFunction", function() {
+    internal("isFunction", function() {
         var isFunction = function(val) {
             return typeof val === "function";
         };
         return isFunction;
     });
     //! node_modules/hbjs/src/utils/parsers/functionArgs.js
-    define("functionArgs", function() {
+    internal("functionArgs", function() {
         var rx1 = /\(.*?\)/;
         var rx2 = /([\$\w])+/gm;
         return function(fn) {
@@ -2360,7 +2295,7 @@
         };
     });
     //! node_modules/hbjs/src/utils/formatters/removeLineBreaks.js
-    define("removeLineBreaks", function() {
+    internal("removeLineBreaks", function() {
         var removeLineBreaks = function(str) {
             str = str + "";
             return str.replace(/(\r\n|\n|\r)/gm, "");
@@ -2368,7 +2303,7 @@
         return removeLineBreaks;
     });
     //! node_modules/hbjs/src/utils/formatters/removeExtraSpaces.js
-    define("removeExtraSpaces", function() {
+    internal("removeExtraSpaces", function() {
         var removeExtraSpaces = function(str) {
             str = str + "";
             return str.replace(/\s+/g, " ");
@@ -2376,15 +2311,58 @@
         return removeExtraSpaces;
     });
     //! node_modules/hbjs/src/utils/formatters/removeHTMLComments.js
-    define("removeHTMLComments", function() {
+    internal("removeHTMLComments", function() {
         var removeHTMLComments = function(htmlStr) {
             htmlStr = htmlStr + "";
             return htmlStr.replace(/<!--[\s\S]*?-->/g, "");
         };
         return removeHTMLComments;
     });
+    //! node_modules/hbjs/src/utils/browser/ready.js
+    internal("ready", function() {
+        var callbacks = [], win = window, doc = document, ADD_EVENT_LISTENER = "addEventListener", REMOVE_EVENT_LISTENER = "removeEventListener", ATTACH_EVENT = "attachEvent", DETACH_EVENT = "detachEvent", DOM_CONTENT_LOADED = "DOMContentLoaded", ON_READY_STATE_CHANGE = "onreadystatechange", COMPLETE = "complete", READY_STATE = "readyState";
+        var ready = function(callback) {
+            callbacks.push(callback);
+            if (doc[READY_STATE] === COMPLETE) {
+                setTimeout(invokeCallbacks);
+            }
+        };
+        var DOMContentLoaded;
+        function invokeCallbacks() {
+            var i = 0, len = callbacks.length;
+            while (i < len) {
+                callbacks[i]();
+                i += 1;
+            }
+            callbacks.length = 0;
+        }
+        if (doc[ADD_EVENT_LISTENER]) {
+            DOMContentLoaded = function() {
+                doc[REMOVE_EVENT_LISTENER](DOM_CONTENT_LOADED, DOMContentLoaded, false);
+                invokeCallbacks();
+            };
+        } else if (doc.attachEvent) {
+            DOMContentLoaded = function() {
+                if (doc[READY_STATE] === COMPLETE) {
+                    doc[DETACH_EVENT](ON_READY_STATE_CHANGE, DOMContentLoaded);
+                    invokeCallbacks();
+                }
+            };
+        }
+        if (doc[READY_STATE] === COMPLETE) {
+            setTimeout(invokeCallbacks, 1);
+        }
+        if (doc[ADD_EVENT_LISTENER]) {
+            doc[ADD_EVENT_LISTENER](DOM_CONTENT_LOADED, DOMContentLoaded, false);
+            win[ADD_EVENT_LISTENER]("load", invokeCallbacks, false);
+        } else if (doc[ATTACH_EVENT]) {
+            doc[ATTACH_EVENT](ON_READY_STATE_CHANGE, DOMContentLoaded);
+            win[ATTACH_EVENT]("onload", invokeCallbacks);
+        }
+        return ready;
+    });
     //! node_modules/hbjs/src/utils/async/dispatcher.js
-    define("dispatcher", [ "apply" ], function(apply) {
+    internal("dispatcher", [ "apply" ], function(apply) {
         function Event(type) {
             this.type = event;
             this.defaultPrevented = false;
@@ -2484,7 +2462,7 @@
         return dispatcher;
     });
     //! node_modules/hbjs/src/utils/browser/loader.js
-    define("loader", [ "toArray" ], function(toArray) {
+    internal("loader", [ "toArray" ], function(toArray) {
         return function(doc) {
             var env, head, pending = {}, pollCount = 0, queue = {
                 css: [],

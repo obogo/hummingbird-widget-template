@@ -1,39 +1,16 @@
 module.exports = function(grunt) {
 
-  var config = {};
-  // config.hammer = {
-  //   "dummy": {
-  //     name: 'dummy', // the name of the package
-  //     build: 'dist', // build directory
-  //     scripts: { // compiles JS files into a single build file
-  //       cwd: 'src', // current working directory
-  //       src: ['**/*.js'], // search through all JS file in src src directory
-  //       import: ['dummy', 'widgets.*'] // what files should we import and compile
-  //     },
-  //     styles: { // compiles LESS files into style.css
-  //       src: 'src/**/*.less' // location of LESS files
-  //     },
-  //     templates: { // compiles HTML templates into templates.js
-  //       cwd: 'src/widgets', // current working directory
-  //       src: '**/*.html' // search for all HTML files
-  //     },
-  //     assets: { // copies assets required to use this package
-  //       cwd: 'src', // current working directory
-  //       //  src: ['vendor/**/*.svg', 'vendor/**/*.js', 'vendor/**/*.css', '!vendor/**/*.min.js'] // do not include minified
-  //       src: ['vendor/**/*.svg', 'vendor/**/*.js', 'vendor/**/*.css'] // files to include
-  //     }
-  //   }
-  // };
+  // Load grunt tasks automatically
+  require('load-grunt-tasks')(grunt);
 
+  var config = {};
   config.compile = {
-    "dummy": { // side click admin
+    "dummy": {
       wrap: 'obogo',
       name: "app",
       filename: 'dummy',
       build: 'dist',
       scripts: {
-        // inspect: ['sandbox/index.html'],
-        // ignorePatterns: false,
         src: ['src/widgets/dummy/**/*.js'], // search through all JS file in src src directory
         import: ['dummy.*', 'hbd.cloak'], // what files should we import and compile
         // includes: ['src/sideclick/vendor/rocket.js'],
@@ -55,36 +32,17 @@ module.exports = function(grunt) {
         cwd: 'src/widgets',
         src: 'dummy/**/**.html'
       }],
-      // loader: {
-      //   //url: "##CDNURL##/sideclick-admin/sideclick.min.js",
-      //   url: "##CDNURL##/sideclick-admin-widget.js",
-      //   api: "init boot on shutdown update show hide showMessages showNewMessage registerModule",
-      //   filename: "sideclick-admin"
-      // },
-      // assets: {
-      //   files: [{
-      //     expand: true,
-      //     src: ['src/**/*.svg', 'src/**/*.png', 'src/**/*.gif', 'src/**/*.jpg', 'src/**/*.mp3', 'src/**/*.css'],
-      //     dest: '##BUILD_PATH##/assets/',
-      //     filter: 'isFile',
-      //     flatten: true
-      //   }]
-      // },
-      // services: options.services
     },
 
-    "all": { // side click admin
+    "all": {
       wrap: 'obogo',
       name: "app",
       filename: 'widgets',
       build: 'dist',
       scripts: {
-        // inspect: ['sandbox/index.html'],
-        // ignorePatterns: false,
-        src: ['src/**/*.js', '!src/widgets/*/app.js'], // search through all JS file in src src directory
-        import: ['widgets.*', 'hbd.cloak'], // what files should we import and compile
-        // includes: ['src/sideclick/vendor/rocket.js'],
-        // export: ['dummy', 'dummer'] // hide all from view
+        src: ['src/app.js', 'src/widgets/**/*.js', 'src/shared/**/*.js', '!src/widgets/*/app.js'], // search through all JS file in src src directory
+        import: ['widgets.*', 'shared.*', 'hbd.cloak'], // what files should we import and compile
+        export: [''] // hide all from view
       },
       styles: {
         options: {
@@ -100,25 +58,53 @@ module.exports = function(grunt) {
       },
       templates: [{
         cwd: 'src/widgets',
-        src: '**/**.html'
+        src: '**/**.html',
+        options: {
+          interval: 500
+        }
       }],
-      // loader: {
-      //   //url: "##CDNURL##/sideclick-admin/sideclick.min.js",
-      //   url: "##CDNURL##/sideclick-admin-widget.js",
-      //   api: "init boot on shutdown update show hide showMessages showNewMessage registerModule",
-      //   filename: "sideclick-admin"
-      // },
-      // assets: {
-      //   files: [{
-      //     expand: true,
-      //     src: ['src/**/*.svg', 'src/**/*.png', 'src/**/*.gif', 'src/**/*.jpg', 'src/**/*.mp3', 'src/**/*.css'],
-      //     dest: '##BUILD_PATH##/assets/',
-      //     filter: 'isFile',
-      //     flatten: true
-      //   }]
-      // },
-      // services: options.services
+    },
+
+
+    "platform": {
+      wrap: 'platform',
+      name: "app",
+      filename: 'platform.dist',
+      build: 'dist',
+      scripts: {
+        src: ['src/platform/**/*.js', 'src/shared/**/*.js', '!src/platform/widgets/*/app.js'], // search through all JS file in src src directory
+        import: ['platform.*', 'hbd.cloak'], // what files should we import and compile
+        export: [''] // hide all from global namespace
+      },
+      styles: {
+        options: {
+          paths: ["platform/**/*.less"],
+          strictImports: true,
+          syncImport: true
+        },
+        files: {
+          'dist/platform.css': [
+            "src/platform/**/*.less"
+          ]
+        }
+      },
+      templates: [{
+        cwd: 'src/platform',
+        src: '**/**.html',
+        options: {
+          interval: 500
+        }
+      }],
+      loader: {
+        url: "/dist/platform.dist.js",
+        api: "boot",
+        filename: "platform"
+      },
     }
+  };
+
+  config.clean = {
+    dist: ['dist']
   };
 
   // This is used to copy dist directory into bower_components for sandbox
@@ -154,6 +140,15 @@ module.exports = function(grunt) {
     }
   };
 
+  // To watch for changes
+  // $ grunt watch
+  config.watch = {
+    scripts: {
+      files: ['src/**/*'],
+      tasks: ['default']
+    },
+  };
+
   // Unit Tests
   config.jasmine = {
     dummy: {
@@ -170,14 +165,7 @@ module.exports = function(grunt) {
   // initialize config
   grunt.initConfig(config);
 
-  // load tasks
-  grunt.loadNpmTasks('hbjs');
-  grunt.loadNpmTasks('grunt-angular-templates');
-  grunt.loadNpmTasks('grunt-contrib-jasmine');
-  grunt.loadNpmTasks('grunt-bump');
-  // grunt.loadNpmTasks('grunt-hammer');
-
   // register tasks
-  grunt.registerTask('default', ['compile', 'copy']);
+  grunt.registerTask('default', ['clean:dist', 'compile', 'copy']);
   grunt.registerTask('test', 'jasmine');
 };

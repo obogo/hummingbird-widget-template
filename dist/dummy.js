@@ -2324,7 +2324,7 @@
         directive("dummy", function() {
             return {
                 scope: true,
-                tplUrl: "f8ea09a0_tpl0",
+                tplUrl: "1c9febe2_tpl0",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     query(el).addClass(alias.name);
                     if (!scope.model) {
@@ -2374,7 +2374,7 @@
         directive("dummyLabel", function() {
             return {
                 scope: true,
-                tplUrl: "f8ea09a0_tpl1",
+                tplUrl: "1c9febe2_tpl1",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -2401,8 +2401,8 @@
     });
     //! .tmp_templates/templates_0.js
     internal("templates_0", [ "app" ], function(app) {
-        app.template("f8ea09a0_tpl0", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
-        app.template("f8ea09a0_tpl1", "<div>You said: {{title}} {{text}}</div>");
+        app.template("1c9febe2_tpl0", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
+        app.template("1c9febe2_tpl1", "<div>You said: {{title}} {{text}}</div>");
     });
     for (var name in cache) {
         resolve(name, cache[name]);
