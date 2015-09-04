@@ -86,7 +86,7 @@
         directive("application", function() {
             return {
                 scope: true,
-                tplUrl: "e0d0e5ad_tpl0",
+                tplUrl: "02b72988_tpl0",
                 link: [ "scope", "el", "attr", function(scope, el, attr) {
                     scope.model = {
                         title: attr.title,
@@ -2623,7 +2623,7 @@
         directive("card", function() {
             return {
                 scope: true,
-                tplUrl: "e0d0e5ad_tpl1",
+                tplUrl: "02b72988_tpl1",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     console.log("whois", alias, resolve(scope).get(alias.value));
                     scope.contact = resolve(scope).get(alias.value);
@@ -2696,7 +2696,7 @@
         directive("cardLabel", function() {
             return {
                 scope: true,
-                tplUrl: "e0d0e5ad_tpl2",
+                tplUrl: "02b72988_tpl2",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -2962,9 +2962,9 @@
     });
     //! .tmp_templates/templates_0.js
     internal("templates_0", [ "app" ], function(app) {
-        app.template("e0d0e5ad_tpl0", '<div hb-repeat="item in model.list"><div card=item></div></div>');
-        app.template("e0d0e5ad_tpl1", '<div><div card-label=contact.name></div><div class=card-content><p>Insert content here...</p><div class="btn btn-primary" hb-click=update()>Click me</div></div></div>');
-        app.template("e0d0e5ad_tpl2", "<div class=card-label>{{text}}</div>");
+        app.template("02b72988_tpl0", '<div hb-repeat="item in model.list"><div card=item></div></div>');
+        app.template("02b72988_tpl1", '<div><div card-label=contact.name></div><div class=card-content><p>Insert content here...</p><div class="btn btn-primary" hb-click=update()>Click me</div></div></div>');
+        app.template("02b72988_tpl2", "<div class=card-label>{{text}}</div>");
     });
     for (var name in cache) {
         resolve(name, cache[name]);

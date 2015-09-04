@@ -2322,7 +2322,7 @@
         directive("dummer", function() {
             return {
                 scope: true,
-                tplUrl: "907981bd_tpl0",
+                tplUrl: "f166e2bb_tpl0",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     query(el).addClass(alias.name);
                     if (!scope.model) {
@@ -2592,7 +2592,7 @@
         directive("dummerLabel", function() {
             return {
                 scope: true,
-                tplUrl: "907981bd_tpl1",
+                tplUrl: "f166e2bb_tpl1",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -2609,7 +2609,7 @@
         directive("dummy", function() {
             return {
                 scope: true,
-                tplUrl: "907981bd_tpl2",
+                tplUrl: "f166e2bb_tpl2",
                 link: [ "scope", "el", "alias", "attr", function(scope, el, alias, attr) {
                     query(el).addClass(alias.name);
                     if (!scope.model) {
@@ -2627,7 +2627,7 @@
         directive("dummyLabel", function() {
             return {
                 scope: true,
-                tplUrl: "907981bd_tpl3",
+                tplUrl: "f166e2bb_tpl3",
                 link: [ "scope", "el", "alias", function(scope, el, alias) {
                     scope.$watch(alias.value, function(newVal) {
                         scope.text = newVal;
@@ -2654,10 +2654,10 @@
     });
     //! .tmp_templates/templates_0.js
     internal("templates_0", [ "app" ], function(app) {
-        app.template("907981bd_tpl0", "<div>{{model}}</div><div dummer-label=model.text hb-click=update()></div>");
-        app.template("907981bd_tpl1", "<div>He said: {{text}}!!!</div>");
-        app.template("907981bd_tpl2", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
-        app.template("907981bd_tpl3", "<div>You said: {{title}} {{text}}</div>");
+        app.template("f166e2bb_tpl0", "<div>{{model}}</div><div dummer-label=model.text hb-click=update()></div>");
+        app.template("f166e2bb_tpl1", "<div>He said: {{text}}!!!</div>");
+        app.template("f166e2bb_tpl2", "<div>{{model}}</div><div dummy-label=model.text hb-click=update()></div>");
+        app.template("f166e2bb_tpl3", "<div>You said: {{title}} {{text}}</div>");
     });
     for (var name in cache) {
         resolve(name, cache[name]);
